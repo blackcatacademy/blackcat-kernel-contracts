@@ -1188,6 +1188,8 @@ contract InstanceController {
 
         if (!paused) {
             _setPaused(by, true);
+        } else {
+            pauseNonce += 1;
         }
     }
 

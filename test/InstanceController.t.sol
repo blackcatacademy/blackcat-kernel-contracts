@@ -647,6 +647,12 @@ contract InstanceControllerTest is TestBase {
         controller.setReleaseRegistry(address(0));
     }
 
+    function test_lockReleaseRegistry_rejects_without_registry() public {
+        vm.prank(root);
+        vm.expectRevert("InstanceController: no registry");
+        controller.lockReleaseRegistry();
+    }
+
     function test_lockMinUpgradeDelay_freezes_value() public {
         vm.prank(root);
         controller.setMinUpgradeDelaySec(60);
@@ -933,6 +939,33 @@ contract InstanceControllerTest is TestBase {
         assertEq(controller.lastIncidentBy(), reporter, "incident by mismatch");
     }
 
+    function test_reportIncident_while_paused_increments_pauseNonce_and_invalidates_unpause_signature() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        vm.prank(emergency);
+        c.pause();
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = c.hashSetPaused(true, false, deadline);
+        bytes memory sig = _sign(rootPk, digest);
+
+        uint256 pauseNonceBefore = c.pauseNonce();
+
+        vm.prank(rootAddr);
+        c.reportIncident(keccak256("incident-while-paused"));
+
+        assertEq(c.pauseNonce(), pauseNonceBefore + 1, "pauseNonce should increment on incident while paused");
+
+        vm.expectRevert("InstanceController: invalid pause signature");
+        c.setPausedAuthorized(true, false, deadline, sig);
+    }
+
     function test_reportIncidentAuthorized_accepts_root_signature_and_is_not_replayable() public {
         uint256 rootPk = 0xA11CE;
         address rootAddr = vm.addr(rootPk);
@@ -1053,6 +1086,22 @@ contract InstanceControllerTest is TestBase {
         vm.prank(root);
         vm.expectRevert("InstanceController: expected component locked");
         c.setExpectedComponentId(bytes32(0));
+    }
+
+    function test_lockExpectedComponentId_rejects_zero_value() public {
+        ReleaseRegistry registry = new ReleaseRegistry(address(this));
+        bytes32 componentA = keccak256("blackcat-core");
+
+        registry.publish(componentA, 1, genesisRoot, genesisUriHash, 0);
+
+        InstanceFactory strictFactory = new InstanceFactory(address(registry));
+        InstanceController c = InstanceController(
+            strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: componentId=0");
+        c.lockExpectedComponentId();
     }
 
     function test_compatibility_state_rejects_revoked_root_when_registry_is_set() public {
