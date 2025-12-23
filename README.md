@@ -24,6 +24,7 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 - `blackcat-kernel-contracts/docs/SPEC.md`
 - `blackcat-kernel-contracts/docs/AUTHORITY_MODES.md`
 - `blackcat-kernel-contracts/docs/ROADMAP.md`
+- `blackcat-kernel-contracts/docs/OPERATIONS.md`
 
 ## Governance model (planned)
 
