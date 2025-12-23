@@ -76,10 +76,12 @@ contract InstanceController {
     address public pendingEmergencyAuthority;
 
     address public releaseRegistry;
+    bool public releaseRegistryLocked;
     address public reporterAuthority;
     address public pendingReporterAuthority;
 
     bool public paused;
+    bool public emergencyCanUnpause;
     bool public autoPauseOnBadCheckIn;
 
     bytes32 public activeRoot;
@@ -97,6 +99,7 @@ contract InstanceController {
     uint64 public genesisAt;
     uint64 public lastUpgradeAt;
     uint64 public minUpgradeDelaySec;
+    bool public minUpgradeDelayLocked;
     uint64 public lastCheckInAt;
     bool public lastCheckInOk;
 
@@ -137,13 +140,16 @@ contract InstanceController {
     event EmergencyAuthorityTransferCanceled(address indexed previousValue, address indexed pendingValue);
     event ReporterAuthorityTransferCanceled(address indexed previousValue, address indexed pendingValue);
     event ReleaseRegistryChanged(address indexed previousValue, address indexed newValue);
+    event ReleaseRegistryLocked(address indexed registry);
     event ReporterAuthorityChanged(address indexed previousValue, address indexed newValue);
     event MinUpgradeDelayChanged(uint64 previousValue, uint64 newValue);
+    event MinUpgradeDelayLocked(uint64 value);
     event CompatibilityWindowChanged(uint64 previousValue, uint64 newValue);
     event CompatibilityStateSet(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 until);
     event CompatibilityStateCleared(bytes32 root, bytes32 uriHash, bytes32 policyHash);
     event AttestationSet(bytes32 indexed key, bytes32 previousValue, bytes32 newValue, uint64 at);
     event AutoPauseOnBadCheckInChanged(bool previousValue, bool newValue);
+    event EmergencyUnpausePolicyChanged(bool previousValue, bool newValue);
     event CheckIn(
         address indexed by, bool ok, bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash
     );
@@ -242,7 +248,16 @@ contract InstanceController {
         }
     }
 
-    function unpause() external onlyEmergencyOrRootAuthority {
+    function unpause() external {
+        if (msg.sender == rootAuthority) {
+            if (paused) {
+                _setPaused(msg.sender, false);
+            }
+            return;
+        }
+
+        require(msg.sender == emergencyAuthority, "InstanceController: not emergency/root authority");
+        require(emergencyCanUnpause, "InstanceController: emergency cannot unpause");
         if (paused) {
             _setPaused(msg.sender, false);
         }
@@ -266,6 +281,10 @@ contract InstanceController {
         address signer = _resolvePauseSigner(digest, signature);
         require(signer != address(0), "InstanceController: invalid pause signature");
         emit AuthoritySignatureConsumed(signer, digest, msg.sender);
+
+        if (!newPaused && !emergencyCanUnpause) {
+            require(signer == rootAuthority, "InstanceController: emergency cannot unpause");
+        }
 
         _setPaused(signer, newPaused);
     }
@@ -447,6 +466,8 @@ contract InstanceController {
     }
 
     function setReleaseRegistry(address newValue) external onlyRootAuthority {
+        require(!releaseRegistryLocked, "InstanceController: registry locked");
+
         if (newValue != address(0)) {
             require(newValue.code.length != 0, "InstanceController: registry not contract");
             require(IReleaseRegistry(newValue).isTrustedRoot(activeRoot), "InstanceController: active root not trusted");
@@ -468,6 +489,14 @@ contract InstanceController {
         address previousValue = releaseRegistry;
         releaseRegistry = newValue;
         emit ReleaseRegistryChanged(previousValue, newValue);
+    }
+
+    function lockReleaseRegistry() external onlyRootAuthority {
+        require(!releaseRegistryLocked, "InstanceController: registry locked");
+        address registry = releaseRegistry;
+        require(registry != address(0), "InstanceController: no registry");
+        releaseRegistryLocked = true;
+        emit ReleaseRegistryLocked(registry);
     }
 
     function startReporterAuthorityTransfer(address newValue) external onlyRootAuthority {
@@ -540,10 +569,24 @@ contract InstanceController {
     }
 
     function setMinUpgradeDelaySec(uint64 newValue) external onlyRootAuthority {
+        require(!minUpgradeDelayLocked, "InstanceController: delay locked");
         require(newValue <= MAX_UPGRADE_DELAY_SEC, "InstanceController: delay too large");
         uint64 previousValue = minUpgradeDelaySec;
         minUpgradeDelaySec = newValue;
         emit MinUpgradeDelayChanged(previousValue, newValue);
+    }
+
+    function lockMinUpgradeDelay() external onlyRootAuthority {
+        require(!minUpgradeDelayLocked, "InstanceController: delay locked");
+        require(minUpgradeDelaySec != 0, "InstanceController: delay=0");
+        minUpgradeDelayLocked = true;
+        emit MinUpgradeDelayLocked(minUpgradeDelaySec);
+    }
+
+    function setEmergencyCanUnpause(bool newValue) external onlyRootAuthority {
+        bool previousValue = emergencyCanUnpause;
+        emergencyCanUnpause = newValue;
+        emit EmergencyUnpausePolicyChanged(previousValue, newValue);
     }
 
     function setCompatibilityWindowSec(uint64 newValue) external onlyRootAuthority {
@@ -1115,9 +1158,21 @@ contract InstanceController {
             uint64 incidentCount_,
             uint64 lastIncidentAt_,
             bytes32 lastIncidentHash_,
-            address lastIncidentBy_
+            address lastIncidentBy_,
+            uint256 flags_
         )
     {
+        uint256 flags = 0;
+        if (emergencyCanUnpause) {
+            flags |= 1;
+        }
+        if (releaseRegistryLocked) {
+            flags |= 2;
+        }
+        if (minUpgradeDelayLocked) {
+            flags |= 4;
+        }
+
         return (
             autoPauseOnBadCheckIn,
             releaseRegistry,
@@ -1128,7 +1183,8 @@ contract InstanceController {
             incidentCount,
             lastIncidentAt,
             lastIncidentHash,
-            lastIncidentBy
+            lastIncidentBy,
+            flags
         );
     }
 }

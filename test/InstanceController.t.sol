@@ -52,8 +52,12 @@ contract InstanceControllerTest is TestBase {
         assertTrue(controller.paused(), "pause failed");
 
         vm.prank(emergency);
+        vm.expectRevert("InstanceController: emergency cannot unpause");
         controller.unpause();
-        assertTrue(controller.paused() == false, "unpause failed");
+
+        vm.prank(root);
+        controller.unpause();
+        assertTrue(controller.paused() == false, "root unpause failed");
 
         vm.prank(root);
         controller.pause();
@@ -66,6 +70,19 @@ contract InstanceControllerTest is TestBase {
         vm.prank(upgrader);
         vm.expectRevert("InstanceController: not emergency/root authority");
         controller.pause();
+    }
+
+    function test_emergency_unpause_can_be_enabled_by_root() public {
+        vm.prank(emergency);
+        controller.pause();
+        assertTrue(controller.paused(), "pause failed");
+
+        vm.prank(root);
+        controller.setEmergencyCanUnpause(true);
+
+        vm.prank(emergency);
+        controller.unpause();
+        assertTrue(controller.paused() == false, "emergency unpause failed after enabling");
     }
 
     function test_setPausedAuthorized_accepts_emergency_signature_and_is_not_replayable() public {
@@ -90,6 +107,27 @@ contract InstanceControllerTest is TestBase {
         assertTrue(c.paused(), "should be paused");
 
         vm.expectRevert("InstanceController: invalid pause signature");
+        c.setPausedAuthorized(true, false, deadline, unpauseSig);
+    }
+
+    function test_setPausedAuthorized_rejects_emergency_unpause_when_disabled() public {
+        uint256 emergencyPk = 0xBEEF;
+        address emergencyAddr = vm.addr(emergencyPk);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(root, upgrader, emergencyAddr, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 pauseDigest = c.hashSetPaused(false, true, deadline);
+        bytes memory pauseSig = _sign(emergencyPk, pauseDigest);
+        c.setPausedAuthorized(false, true, deadline, pauseSig);
+        assertTrue(c.paused(), "should be paused");
+
+        bytes32 unpauseDigest = c.hashSetPaused(true, false, deadline);
+        bytes memory unpauseSig = _sign(emergencyPk, unpauseDigest);
+        vm.expectRevert("InstanceController: emergency cannot unpause");
         c.setPausedAuthorized(true, false, deadline, unpauseSig);
     }
 
@@ -523,12 +561,49 @@ contract InstanceControllerTest is TestBase {
         vm.prank(reporter);
         controller.checkIn(keccak256("wrong-root"), genesisUriHash, genesisPolicyHash);
 
-        (bool autoPause,,,,,, uint64 incidentCount_,,,) = controller.snapshotV2();
+        (bool autoPause,,,,,, uint64 incidentCount_,,,, uint256 flags_) = controller.snapshotV2();
         bool paused_ = controller.paused();
 
         assertTrue(paused_, "paused should be true");
         assertTrue(autoPause, "autoPauseOnBadCheckIn should be true");
         assertEq(uint256(incidentCount_), 1, "incidentCount mismatch");
+        assertTrue((flags_ & 1) == 0, "emergencyCanUnpause should default to false");
+        assertTrue((flags_ & 2) == 0, "releaseRegistryLocked should default to false");
+        assertTrue((flags_ & 4) == 0, "minUpgradeDelayLocked should default to false");
+    }
+
+    function test_lockReleaseRegistry_prevents_changes() public {
+        ReleaseRegistry registry = new ReleaseRegistry(address(this));
+        bytes32 component = keccak256("blackcat-core");
+        registry.publish(component, 1, genesisRoot, genesisUriHash, 0);
+
+        vm.prank(root);
+        controller.setReleaseRegistry(address(registry));
+
+        vm.prank(root);
+        controller.lockReleaseRegistry();
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: registry locked");
+        controller.setReleaseRegistry(address(0));
+    }
+
+    function test_lockMinUpgradeDelay_freezes_value() public {
+        vm.prank(root);
+        controller.setMinUpgradeDelaySec(60);
+
+        vm.prank(root);
+        controller.lockMinUpgradeDelay();
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: delay locked");
+        controller.setMinUpgradeDelaySec(0);
+    }
+
+    function test_lockMinUpgradeDelay_rejects_zero_delay() public {
+        vm.prank(root);
+        vm.expectRevert("InstanceController: delay=0");
+        controller.lockMinUpgradeDelay();
     }
 
     function test_activate_upgrade_reverts_when_expired() public {

@@ -75,10 +75,12 @@ Relayer variants:
 
 If you deploy a new `ReleaseRegistry` (or want to remove enforcement), update the controller pointer:
 - Set/clear: `SetReleaseRegistry.s.sol`
+- Lock (irreversible): `LockReleaseRegistry.s.sol`
 
 Notes:
 - In strict mode, switching registries is validated: the new registry must trust the current active root (and any pending/compat roots).
 - Clearing the registry pointer disables registry enforcement (dev only; not recommended for production).
+- Once locked, the registry pointer cannot be changed (recommended for production after verification).
 
 ## Authority rotation (controller)
 
@@ -111,7 +113,9 @@ Clear an attestation:
 
 Other recommended settings:
 - Set upgrade timelock: `SetMinUpgradeDelay.s.sol`
+- Lock upgrade timelock (irreversible): `LockMinUpgradeDelay.s.sol`
 - Toggle auto-pause on bad check-in: `SetAutoPauseOnBadCheckIn.s.sol`
+- Emergency unpause policy: `SetEmergencyCanUnpause.s.sol` (recommended prod default: `0`)
 - Clear reporter authority: `ClearReporterAuthority.s.sol`
 
 ## ManifestStore (optional “full detail” availability)

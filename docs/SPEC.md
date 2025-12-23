@@ -119,9 +119,12 @@ State:
   - `attestationUpdatedAt[key] = unix seconds`
 - `rootAuthority`, `upgradeAuthority`, `emergencyAuthority`
 - Optional `releaseRegistry` (if set, upgrades must reference trusted roots)
+- Optional `releaseRegistryLocked` (if true, registry pointer is immutable)
 - Optional `minUpgradeDelaySec` (timelock)
+- Optional `minUpgradeDelayLocked` (if true, `minUpgradeDelaySec` is immutable)
 - Optional `reporterAuthority` + `lastCheckInAt/lastCheckInOk` (monitoring agent check-in)
 - Optional `autoPauseOnBadCheckIn` (auto-pause latch on a bad check-in)
+- Optional `emergencyCanUnpause` (if false, emergency is pause-only; root can always unpause)
 - Incident tracking: `incidentCount`, `lastIncidentAt`, `lastIncidentHash`, `lastIncidentBy`
 
 Upgrade flow (v1):
@@ -187,8 +190,9 @@ If `releaseRegistry` is set:
 - `proposeUpgrade(...)` and `activateUpgrade()` require the proposed root to be trusted at the time of the call.
 
 Emergency flow:
-- `pause()` / `unpause()` (emergency authority)
-- Root authority can also pause/unpause as a fallback (recommended).
+- `pause()` (emergency authority or root authority)
+- `unpause()` (root authority; emergency only if `emergencyCanUnpause=true`)
+- Root authority can always pause/unpause as a fallback (recommended).
 - `reportIncident(incidentHash)` can be called by root/emergency/reporter and will pause the controller and record incident metadata.
 - Optional: `setPausedAuthorized(...)` allows a relayer to set pause/unpause using an EIP-712 signature from `rootAuthority` or `emergencyAuthority`.
 
@@ -204,7 +208,11 @@ Incident reporting (v1):
 
 Runtime optimization (v1):
 - `snapshot()` aggregates the commonly-read state (paused + active hashes + pending proposal) into one `eth_call`.
-- `snapshotV2()` returns operational/health metadata (check-in + incidents + registry pointers) in one call without changing the `snapshot()` ABI (backwards compatible).
+- `snapshotV2()` returns operational/health metadata (check-in + incidents + key flags like registry lock / emergency unpause policy) in one call without changing the `snapshot()` ABI (backwards compatible).
+  - `snapshotV2.flags` bitset:
+    - `0x1` → `emergencyCanUnpause`
+    - `0x2` → `releaseRegistryLocked`
+    - `0x4` → `minUpgradeDelayLocked`
 
 ### `InstanceFactory`
 

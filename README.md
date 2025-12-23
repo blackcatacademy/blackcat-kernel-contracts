@@ -71,9 +71,12 @@ Scripts live in `blackcat-kernel-contracts/script/` and intentionally avoid exte
   - `blackcat-kernel-contracts/script/SetAttestation.s.sol`, `blackcat-kernel-contracts/script/ClearAttestation.s.sol`
   - `blackcat-kernel-contracts/script/SetCompatibilityWindow.s.sol`, `blackcat-kernel-contracts/script/ClearCompatibilityState.s.sol`
   - `blackcat-kernel-contracts/script/SetMinUpgradeDelay.s.sol`
+  - `blackcat-kernel-contracts/script/LockMinUpgradeDelay.s.sol`
   - `blackcat-kernel-contracts/script/SetAutoPauseOnBadCheckIn.s.sol`
+  - `blackcat-kernel-contracts/script/SetEmergencyCanUnpause.s.sol`
   - `blackcat-kernel-contracts/script/ClearReporterAuthority.s.sol`
   - `blackcat-kernel-contracts/script/SetReleaseRegistry.s.sol`
+  - `blackcat-kernel-contracts/script/LockReleaseRegistry.s.sol`
   - Authority rotation helpers:
     - Root: `blackcat-kernel-contracts/script/StartRootAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptRootAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelRootAuthorityTransfer.s.sol`
     - Upgrade: `blackcat-kernel-contracts/script/StartUpgradeAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptUpgradeAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelUpgradeAuthorityTransfer.s.sol`
