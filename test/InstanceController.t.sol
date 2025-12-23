@@ -85,6 +85,18 @@ contract InstanceControllerTest is TestBase {
         assertTrue(controller.paused() == false, "emergency unpause failed after enabling");
     }
 
+    function test_emergency_unpause_policy_lock_freezes_value() public {
+        vm.prank(root);
+        controller.setEmergencyCanUnpause(true);
+
+        vm.prank(root);
+        controller.lockEmergencyCanUnpause();
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: unpause policy locked");
+        controller.setEmergencyCanUnpause(false);
+    }
+
     function test_setPausedAuthorized_accepts_emergency_signature_and_is_not_replayable() public {
         uint256 emergencyPk = 0xBEEF;
         address emergencyAddr = vm.addr(emergencyPk);
@@ -613,6 +625,9 @@ contract InstanceControllerTest is TestBase {
         assertTrue((flags_ & 1) == 0, "emergencyCanUnpause should default to false");
         assertTrue((flags_ & 2) == 0, "releaseRegistryLocked should default to false");
         assertTrue((flags_ & 4) == 0, "minUpgradeDelayLocked should default to false");
+        assertTrue((flags_ & 8) == 0, "emergencyCanUnpauseLocked should default to false");
+        assertTrue((flags_ & 16) == 0, "autoPauseOnBadCheckInLocked should default to false");
+        assertTrue((flags_ & 32) == 0, "compatibilityWindowLocked should default to false");
     }
 
     function test_lockReleaseRegistry_prevents_changes() public {
@@ -743,6 +758,18 @@ contract InstanceControllerTest is TestBase {
         );
     }
 
+    function test_compatibilityWindow_lock_freezes_value() public {
+        vm.prank(root);
+        controller.setCompatibilityWindowSec(3600);
+
+        vm.prank(root);
+        controller.lockCompatibilityWindow();
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: window locked");
+        controller.setCompatibilityWindowSec(0);
+    }
+
     function test_setMinUpgradeDelaySec_rejects_too_large() public {
         uint64 tooLarge = controller.MAX_UPGRADE_DELAY_SEC() + 1;
 
@@ -864,6 +891,18 @@ contract InstanceControllerTest is TestBase {
         assertTrue(controller.paused(), "controller should auto-pause");
         assertEq(uint256(controller.incidentCount()), 1, "incidentCount mismatch");
         assertEq(controller.lastIncidentBy(), reporter, "lastIncidentBy mismatch");
+    }
+
+    function test_autoPauseOnBadCheckIn_lock_freezes_value() public {
+        vm.prank(root);
+        controller.setAutoPauseOnBadCheckIn(true);
+
+        vm.prank(root);
+        controller.lockAutoPauseOnBadCheckIn();
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: auto-pause locked");
+        controller.setAutoPauseOnBadCheckIn(false);
     }
 
     function test_reportIncident_pauses() public {

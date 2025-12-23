@@ -52,6 +52,7 @@ Activate/cancel (safe helpers):
 
 Rolling upgrades:
 - Set overlap window: `SetCompatibilityWindow.s.sol`
+- Lock overlap window (irreversible): `LockCompatibilityWindow.s.sol`
 - During the overlap, runtimes can accept either active state or compatibility state (`isAcceptedState`).
 - Clear compatibility state: `ClearCompatibilityState.s.sol`
 
@@ -118,7 +119,9 @@ Other recommended settings:
 - Set upgrade timelock: `SetMinUpgradeDelay.s.sol`
 - Lock upgrade timelock (irreversible): `LockMinUpgradeDelay.s.sol`
 - Toggle auto-pause on bad check-in: `SetAutoPauseOnBadCheckIn.s.sol`
+- Lock auto-pause (irreversible): `LockAutoPauseOnBadCheckIn.s.sol`
 - Emergency unpause policy: `SetEmergencyCanUnpause.s.sol` (recommended prod default: `0`)
+- Lock emergency unpause policy (irreversible): `LockEmergencyCanUnpause.s.sol`
 - Clear reporter authority: `ClearReporterAuthority.s.sol`
 
 ## ManifestStore (optional “full detail” availability)

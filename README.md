@@ -71,10 +71,13 @@ Scripts live in `blackcat-kernel-contracts/script/` and intentionally avoid exte
   - `blackcat-kernel-contracts/script/SetAttestation.s.sol`, `blackcat-kernel-contracts/script/ClearAttestation.s.sol`
   - Attestation write-once: `blackcat-kernel-contracts/script/SetAttestationAndLock.s.sol`, `blackcat-kernel-contracts/script/LockAttestationKey.s.sol`
   - `blackcat-kernel-contracts/script/SetCompatibilityWindow.s.sol`, `blackcat-kernel-contracts/script/ClearCompatibilityState.s.sol`
+  - `blackcat-kernel-contracts/script/LockCompatibilityWindow.s.sol`
   - `blackcat-kernel-contracts/script/SetMinUpgradeDelay.s.sol`
   - `blackcat-kernel-contracts/script/LockMinUpgradeDelay.s.sol`
   - `blackcat-kernel-contracts/script/SetAutoPauseOnBadCheckIn.s.sol`
+  - `blackcat-kernel-contracts/script/LockAutoPauseOnBadCheckIn.s.sol`
   - `blackcat-kernel-contracts/script/SetEmergencyCanUnpause.s.sol`
+  - `blackcat-kernel-contracts/script/LockEmergencyCanUnpause.s.sol`
   - `blackcat-kernel-contracts/script/ClearReporterAuthority.s.sol`
   - `blackcat-kernel-contracts/script/SetReleaseRegistry.s.sol`
   - `blackcat-kernel-contracts/script/LockReleaseRegistry.s.sol`

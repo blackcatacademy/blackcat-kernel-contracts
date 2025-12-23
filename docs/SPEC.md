@@ -214,6 +214,9 @@ Runtime optimization (v1):
     - `0x1` → `emergencyCanUnpause`
     - `0x2` → `releaseRegistryLocked`
     - `0x4` → `minUpgradeDelayLocked`
+    - `0x8` → `emergencyCanUnpauseLocked`
+    - `0x10` → `autoPauseOnBadCheckInLocked`
+    - `0x20` → `compatibilityWindowLocked`
 
 ### `InstanceFactory`
 

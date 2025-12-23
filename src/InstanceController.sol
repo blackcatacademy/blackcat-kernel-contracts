@@ -82,7 +82,9 @@ contract InstanceController {
 
     bool public paused;
     bool public emergencyCanUnpause;
+    bool public emergencyCanUnpauseLocked;
     bool public autoPauseOnBadCheckIn;
+    bool public autoPauseOnBadCheckInLocked;
 
     bytes32 public activeRoot;
     bytes32 public activeUriHash;
@@ -91,6 +93,7 @@ contract InstanceController {
     UpgradeProposal public pendingUpgrade;
     CompatibilityState public compatibilityState;
     uint64 public compatibilityWindowSec;
+    bool public compatibilityWindowLocked;
 
     /// @notice Root-controlled attestation slots (extensibility without contract changes).
     mapping(bytes32 => bytes32) public attestations;
@@ -146,12 +149,15 @@ contract InstanceController {
     event MinUpgradeDelayChanged(uint64 previousValue, uint64 newValue);
     event MinUpgradeDelayLocked(uint64 value);
     event CompatibilityWindowChanged(uint64 previousValue, uint64 newValue);
+    event CompatibilityWindowLocked(uint64 value);
     event CompatibilityStateSet(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 until);
     event CompatibilityStateCleared(bytes32 root, bytes32 uriHash, bytes32 policyHash);
     event AttestationSet(bytes32 indexed key, bytes32 previousValue, bytes32 newValue, uint64 at);
     event AttestationLocked(bytes32 indexed key, bytes32 value, uint64 at);
     event AutoPauseOnBadCheckInChanged(bool previousValue, bool newValue);
+    event AutoPauseOnBadCheckInLocked(bool value);
     event EmergencyUnpausePolicyChanged(bool previousValue, bool newValue);
+    event EmergencyUnpausePolicyLocked(bool value);
     event CheckIn(
         address indexed by, bool ok, bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash
     );
@@ -585,17 +591,31 @@ contract InstanceController {
         emit MinUpgradeDelayLocked(minUpgradeDelaySec);
     }
 
+    function lockEmergencyCanUnpause() external onlyRootAuthority {
+        require(!emergencyCanUnpauseLocked, "InstanceController: unpause policy locked");
+        emergencyCanUnpauseLocked = true;
+        emit EmergencyUnpausePolicyLocked(emergencyCanUnpause);
+    }
+
     function setEmergencyCanUnpause(bool newValue) external onlyRootAuthority {
+        require(!emergencyCanUnpauseLocked, "InstanceController: unpause policy locked");
         bool previousValue = emergencyCanUnpause;
         emergencyCanUnpause = newValue;
         emit EmergencyUnpausePolicyChanged(previousValue, newValue);
     }
 
     function setCompatibilityWindowSec(uint64 newValue) external onlyRootAuthority {
+        require(!compatibilityWindowLocked, "InstanceController: window locked");
         require(newValue <= MAX_COMPATIBILITY_WINDOW_SEC, "InstanceController: window too large");
         uint64 previousValue = compatibilityWindowSec;
         compatibilityWindowSec = newValue;
         emit CompatibilityWindowChanged(previousValue, newValue);
+    }
+
+    function lockCompatibilityWindow() external onlyRootAuthority {
+        require(!compatibilityWindowLocked, "InstanceController: window locked");
+        compatibilityWindowLocked = true;
+        emit CompatibilityWindowLocked(compatibilityWindowSec);
     }
 
     function clearCompatibilityState() external onlyRootAuthority {
@@ -671,9 +691,16 @@ contract InstanceController {
     }
 
     function setAutoPauseOnBadCheckIn(bool newValue) external onlyRootAuthority {
+        require(!autoPauseOnBadCheckInLocked, "InstanceController: auto-pause locked");
         bool previousValue = autoPauseOnBadCheckIn;
         autoPauseOnBadCheckIn = newValue;
         emit AutoPauseOnBadCheckInChanged(previousValue, newValue);
+    }
+
+    function lockAutoPauseOnBadCheckIn() external onlyRootAuthority {
+        require(!autoPauseOnBadCheckInLocked, "InstanceController: auto-pause locked");
+        autoPauseOnBadCheckInLocked = true;
+        emit AutoPauseOnBadCheckInLocked(autoPauseOnBadCheckIn);
     }
 
     function isAcceptedState(bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash)
@@ -1204,6 +1231,15 @@ contract InstanceController {
         }
         if (minUpgradeDelayLocked) {
             flags |= 4;
+        }
+        if (emergencyCanUnpauseLocked) {
+            flags |= 8;
+        }
+        if (autoPauseOnBadCheckInLocked) {
+            flags |= 16;
+        }
+        if (compatibilityWindowLocked) {
+            flags |= 32;
         }
 
         return (
