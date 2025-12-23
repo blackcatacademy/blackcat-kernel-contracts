@@ -150,6 +150,7 @@ Compatibility overlap (optional):
 - Control plane:
   - `setCompatibilityWindowSec(sec)` (root authority; bounded by `MAX_COMPATIBILITY_WINDOW_SEC`)
   - `clearCompatibilityState()` (root authority)
+  - `rollbackToCompatibilityState()` (root authority; break-glass rollback if still within overlap)
 
 Authorized upgrade actions (optional, for relayers):
 - EIP-712 domain:

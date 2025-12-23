@@ -58,6 +58,7 @@ Rolling upgrades:
 - Lock overlap window (irreversible): `LockCompatibilityWindow.s.sol`
 - During the overlap, runtimes can accept either active state or compatibility state (`isAcceptedState`).
 - Clear compatibility state: `ClearCompatibilityState.s.sol`
+- Break-glass rollback (within overlap): `RollbackToCompatibilityState.s.sol`
 
 ## Monitoring and incidents
 

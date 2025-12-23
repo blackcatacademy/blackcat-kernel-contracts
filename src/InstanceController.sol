@@ -166,6 +166,7 @@ contract InstanceController {
     event CompatibilityWindowLocked(uint64 value);
     event CompatibilityStateSet(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 until);
     event CompatibilityStateCleared(bytes32 root, bytes32 uriHash, bytes32 policyHash);
+    event RolledBackToCompatibility(bytes32 previousRoot, bytes32 newRoot, bytes32 uriHash, bytes32 policyHash);
     event AttestationSet(bytes32 indexed key, bytes32 previousValue, bytes32 newValue, uint64 at);
     event AttestationLocked(bytes32 indexed key, bytes32 value, uint64 at);
     event AutoPauseOnBadCheckInChanged(bool previousValue, bool newValue);
@@ -685,6 +686,36 @@ contract InstanceController {
         require(compat.root != bytes32(0), "InstanceController: no compat state");
         delete compatibilityState;
         emit CompatibilityStateCleared(compat.root, compat.uriHash, compat.policyHash);
+    }
+
+    /// @notice Break-glass rollback to the stored compatibility state (if still valid).
+    /// @dev This bypasses timelock/TTL because it rolls back to the last known-good state captured by the controller.
+    function rollbackToCompatibilityState() external onlyRootAuthority {
+        CompatibilityState memory compat = compatibilityState;
+        require(compat.root != bytes32(0), "InstanceController: no compat state");
+        require(block.timestamp <= compat.until, "InstanceController: compat expired");
+
+        address registry = releaseRegistry;
+        if (registry != address(0)) {
+            require(IReleaseRegistry(registry).isTrustedRoot(compat.root), "InstanceController: root not trusted");
+        }
+
+        bytes32 expected = expectedComponentId;
+        if (expected != bytes32(0)) {
+            require(registry != address(0), "InstanceController: no registry");
+            _requireRootComponent(registry, compat.root, expected);
+        }
+
+        bytes32 previousRoot = activeRoot;
+        activeRoot = compat.root;
+        activeUriHash = compat.uriHash;
+        activePolicyHash = compat.policyHash;
+
+        delete compatibilityState;
+        emit CompatibilityStateCleared(compat.root, compat.uriHash, compat.policyHash);
+
+        lastUpgradeAt = uint64(block.timestamp);
+        emit RolledBackToCompatibility(previousRoot, activeRoot, activeUriHash, activePolicyHash);
     }
 
     function setAttestation(bytes32 key, bytes32 value) external onlyRootAuthority {

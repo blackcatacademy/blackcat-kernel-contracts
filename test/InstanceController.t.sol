@@ -847,6 +847,108 @@ contract InstanceControllerTest is TestBase {
         );
     }
 
+    function test_rollbackToCompatibilityState_restores_previous_state_and_clears_compat() public {
+        ReleaseRegistry registry = new ReleaseRegistry(address(this));
+        bytes32 component = keccak256("blackcat-core");
+
+        registry.publish(component, 1, genesisRoot, genesisUriHash, 0);
+
+        InstanceFactory strictFactory = new InstanceFactory(address(registry));
+        InstanceController c = InstanceController(
+            strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        vm.prank(root);
+        c.setCompatibilityWindowSec(3600);
+
+        bytes32 nextRoot = keccak256("trusted-root-rollback-v2");
+        bytes32 nextUriHash = keccak256("trusted-uri-rollback-v2");
+        bytes32 nextPolicyHash = keccak256("trusted-policy-rollback-v2");
+        registry.publish(component, 2, nextRoot, nextUriHash, 0);
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.prank(root);
+        c.activateUpgrade();
+
+        assertEq(c.activeRoot(), nextRoot, "active root should be v2");
+        assertTrue(c.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash), "compat should be accepted");
+
+        vm.prank(root);
+        c.rollbackToCompatibilityState();
+
+        assertEq(c.activeRoot(), genesisRoot, "active root should roll back to v1");
+        assertTrue(!c.isAcceptedState(nextRoot, nextUriHash, nextPolicyHash), "v2 should no longer be accepted");
+
+        (bytes32 compatRoot,,,) = c.compatibilityState();
+        assertEq(compatRoot, bytes32(0), "compatibilityState should be cleared");
+    }
+
+    function test_rollbackToCompatibilityState_rejects_when_expired() public {
+        ReleaseRegistry registry = new ReleaseRegistry(address(this));
+        bytes32 component = keccak256("blackcat-core");
+
+        registry.publish(component, 1, genesisRoot, genesisUriHash, 0);
+
+        InstanceFactory strictFactory = new InstanceFactory(address(registry));
+        InstanceController c = InstanceController(
+            strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        vm.prank(root);
+        c.setCompatibilityWindowSec(1);
+
+        bytes32 nextRoot = keccak256("trusted-root-rollback-expired-v2");
+        bytes32 nextUriHash = keccak256("trusted-uri-rollback-expired-v2");
+        bytes32 nextPolicyHash = keccak256("trusted-policy-rollback-expired-v2");
+        registry.publish(component, 2, nextRoot, nextUriHash, 0);
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.prank(root);
+        c.activateUpgrade();
+
+        vm.warp(block.timestamp + 2);
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: compat expired");
+        c.rollbackToCompatibilityState();
+    }
+
+    function test_rollbackToCompatibilityState_rejects_revoked_compat_root_when_registry_is_set() public {
+        ReleaseRegistry registry = new ReleaseRegistry(address(this));
+        bytes32 component = keccak256("blackcat-core");
+
+        registry.publish(component, 1, genesisRoot, genesisUriHash, 0);
+
+        InstanceFactory strictFactory = new InstanceFactory(address(registry));
+        InstanceController c = InstanceController(
+            strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        vm.prank(root);
+        c.setCompatibilityWindowSec(3600);
+
+        bytes32 nextRoot = keccak256("trusted-root-rollback-revoked-v2");
+        bytes32 nextUriHash = keccak256("trusted-uri-rollback-revoked-v2");
+        bytes32 nextPolicyHash = keccak256("trusted-policy-rollback-revoked-v2");
+        registry.publish(component, 2, nextRoot, nextUriHash, 0);
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.prank(root);
+        c.activateUpgrade();
+
+        registry.revoke(component, 1);
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: root not trusted");
+        c.rollbackToCompatibilityState();
+    }
+
     function test_compatibilityWindow_lock_freezes_value() public {
         vm.prank(root);
         controller.setCompatibilityWindowSec(3600);

@@ -1,0 +1,25 @@
+pragma solidity ^0.8.24;
+
+import {InstanceController} from "../src/InstanceController.sol";
+import {FoundryVm} from "./FoundryVm.sol";
+
+/// @notice Break-glass rollback to compatibility state (if still valid).
+/// @dev Usage:
+/// 1) Set env:
+///    - `PRIVATE_KEY` (root authority / Safe executor / relayer)
+///    - `BLACKCAT_INSTANCE_CONTROLLER` (address)
+/// 2) Run:
+///    - `forge script script/RollbackToCompatibilityState.s.sol:RollbackToCompatibilityState --rpc-url <RPC> --broadcast`
+contract RollbackToCompatibilityState {
+    FoundryVm internal constant vm = FoundryVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    function run() external {
+        uint256 pk = vm.envUint("PRIVATE_KEY");
+        address controller = vm.envAddress("BLACKCAT_INSTANCE_CONTROLLER");
+
+        vm.startBroadcast(pk);
+        InstanceController(controller).rollbackToCompatibilityState();
+        vm.stopBroadcast();
+    }
+}
+
