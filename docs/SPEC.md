@@ -134,6 +134,7 @@ Upgrade flow (v1):
 1. `proposeUpgrade(root, uriHash, policyHash, ttlSec)` (upgrade authority)
    - Optional: `proposeUpgradeByRelease(componentId, version, policyHash, ttlSec)` fetches `{root, uriHash}` from `ReleaseRegistry.get(...)`.
    - `ttlSec` is bounded by `MAX_UPGRADE_TTL_SEC` (v1 default: `30 days`).
+   - Increments `pendingUpgradeNonce` (anti-replay for signature-based actions).
 2. Optional: `cancelUpgrade()` (root authority or upgrade authority)
    - Optional: `cancelUpgradeAuthorized(...)` allows a relayer to cancel using a `rootAuthority` EIP-712 signature (EOA or EIP-1271).
 3. `activateUpgrade()` (root authority, within TTL and after timelock, if configured)
@@ -160,7 +161,7 @@ Authorized upgrade actions (optional, for relayers):
   - For EOA authorities: accepts 65-byte `(r,s,v)` or 64-byte EIP-2098 compact `(r,vs)` signatures.
   - Enforces the “low-s” rule (`s <= secp256k1n/2`) to prevent signature malleability.
   - For EIP-1271 authorities: forwards `signature` bytes to `isValidSignature(bytes32,bytes)`.
-- Digests include the current `pendingUpgrade.createdAt` and `pendingUpgrade.ttlSec`, so signatures cannot be replayed across different proposals.
+- Digests include the current `pendingUpgradeNonce` and `pendingUpgrade.createdAt`/`pendingUpgrade.ttlSec`, so signatures cannot be replayed across different proposals (even if two proposals happen in the same timestamp).
 - Helpers:
   - `hashActivateUpgrade(root, uriHash, policyHash, deadline)` → digest
   - `hashCancelUpgrade(root, uriHash, policyHash, deadline)` → digest

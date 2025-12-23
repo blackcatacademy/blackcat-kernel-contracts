@@ -500,6 +500,36 @@ contract InstanceControllerTest is TestBase {
         c.activateUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, malleable);
     }
 
+    function test_activateUpgradeAuthorized_is_not_replayable_across_repropose_same_timestamp() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        bytes32 nextRoot = keccak256("next-root-auth-replay");
+        bytes32 nextUriHash = keccak256("next-uri-auth-replay");
+        bytes32 nextPolicyHash = keccak256("next-policy-auth-replay");
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        bytes memory sig = _sign(rootPk, digest);
+
+        vm.prank(rootAddr);
+        c.cancelUpgrade();
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.expectRevert("InstanceController: invalid root signature");
+        c.activateUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, sig);
+    }
+
     function test_activateUpgradeAuthorized_accepts_kernelAuthority_root_signature() public {
         uint256 pk1 = 0xA11CE;
         uint256 pk2 = 0xB0B;

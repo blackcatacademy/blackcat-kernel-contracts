@@ -30,10 +30,10 @@ contract InstanceController {
     bytes32 private constant VERSION_HASH = keccak256(bytes("1"));
 
     bytes32 private constant ACTIVATE_UPGRADE_TYPEHASH = keccak256(
-        "ActivateUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint64 createdAt,uint64 ttlSec,uint256 deadline)"
+        "ActivateUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint256 proposalNonce,uint64 createdAt,uint64 ttlSec,uint256 deadline)"
     );
     bytes32 private constant CANCEL_UPGRADE_TYPEHASH = keccak256(
-        "CancelUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint64 createdAt,uint64 ttlSec,uint256 deadline)"
+        "CancelUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint256 proposalNonce,uint64 createdAt,uint64 ttlSec,uint256 deadline)"
     );
     bytes32 private constant CHECKIN_TYPEHASH = keccak256(
         "CheckIn(bytes32 observedRoot,bytes32 observedUriHash,bytes32 observedPolicyHash,uint256 nonce,uint256 deadline)"
@@ -102,6 +102,7 @@ contract InstanceController {
     bytes32 public activePolicyHash;
 
     UpgradeProposal public pendingUpgrade;
+    uint256 public pendingUpgradeNonce;
     CompatibilityState public compatibilityState;
     uint64 public compatibilityWindowSec;
     bool public compatibilityWindowLocked;
@@ -140,7 +141,7 @@ contract InstanceController {
     );
     event Paused(address indexed by);
     event Unpaused(address indexed by);
-    event UpgradeProposed(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 ttlSec);
+    event UpgradeProposed(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 ttlSec, uint256 proposalNonce);
     event UpgradeCanceled(address indexed by);
     event UpgradeActivated(bytes32 previousRoot, bytes32 root, bytes32 uriHash, bytes32 policyHash);
     event RootAuthorityChanged(address indexed previousValue, address indexed newValue);
@@ -878,11 +879,14 @@ contract InstanceController {
             _requireRootComponent(registry, root, expected);
         }
 
+        pendingUpgradeNonce += 1;
+        uint256 proposalNonce = pendingUpgradeNonce;
+
         pendingUpgrade = UpgradeProposal({
             root: root, uriHash: uriHash, policyHash: policyHash, createdAt: uint64(block.timestamp), ttlSec: ttlSec
         });
 
-        emit UpgradeProposed(root, uriHash, policyHash, ttlSec);
+        emit UpgradeProposed(root, uriHash, policyHash, ttlSec, proposalNonce);
     }
 
     function proposeUpgradeByRelease(bytes32 componentId, uint64 version, bytes32 policyHash, uint64 ttlSec)
@@ -906,6 +910,9 @@ contract InstanceController {
             require(rel.root != bytes32(0), "InstanceController: release not found");
             require(IReleaseRegistry(registry).isTrustedRoot(rel.root), "InstanceController: root not trusted");
 
+            pendingUpgradeNonce += 1;
+            uint256 proposalNonce = pendingUpgradeNonce;
+
             pendingUpgrade = UpgradeProposal({
                 root: rel.root,
                 uriHash: rel.uriHash,
@@ -914,7 +921,7 @@ contract InstanceController {
                 ttlSec: ttlSec
             });
 
-            emit UpgradeProposed(rel.root, rel.uriHash, policyHash, ttlSec);
+            emit UpgradeProposed(rel.root, rel.uriHash, policyHash, ttlSec, proposalNonce);
         } catch {
             revert("InstanceController: registry missing get");
         }
@@ -954,7 +961,16 @@ contract InstanceController {
         );
 
         bytes32 structHash = keccak256(
-            abi.encode(CANCEL_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline)
+            abi.encode(
+                CANCEL_UPGRADE_TYPEHASH,
+                root,
+                uriHash,
+                policyHash,
+                pendingUpgradeNonce,
+                upgrade.createdAt,
+                upgrade.ttlSec,
+                deadline
+            )
         );
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
     }
@@ -976,7 +992,16 @@ contract InstanceController {
         );
 
         bytes32 structHash = keccak256(
-            abi.encode(CANCEL_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline)
+            abi.encode(
+                CANCEL_UPGRADE_TYPEHASH,
+                root,
+                uriHash,
+                policyHash,
+                pendingUpgradeNonce,
+                upgrade.createdAt,
+                upgrade.ttlSec,
+                deadline
+            )
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
 
@@ -1016,7 +1041,14 @@ contract InstanceController {
 
         bytes32 structHash = keccak256(
             abi.encode(
-                ACTIVATE_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline
+                ACTIVATE_UPGRADE_TYPEHASH,
+                root,
+                uriHash,
+                policyHash,
+                pendingUpgradeNonce,
+                upgrade.createdAt,
+                upgrade.ttlSec,
+                deadline
             )
         );
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
@@ -1040,7 +1072,14 @@ contract InstanceController {
 
         bytes32 structHash = keccak256(
             abi.encode(
-                ACTIVATE_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline
+                ACTIVATE_UPGRADE_TYPEHASH,
+                root,
+                uriHash,
+                policyHash,
+                pendingUpgradeNonce,
+                upgrade.createdAt,
+                upgrade.ttlSec,
+                deadline
             )
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
