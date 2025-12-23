@@ -114,6 +114,9 @@ State:
 - Optional compatibility overlap (rolling upgrades):
   - `compatibilityWindowSec` (auto-sets a temporary compatibility state after activation)
   - `compatibilityState` (previous `{root, uriHash, policyHash}` accepted until `until`)
+- Optional attestation slots (extensibility without contract changes):
+  - `attestations[key] = value` (root authority)
+  - `attestationUpdatedAt[key] = unix seconds`
 - `rootAuthority`, `upgradeAuthority`, `emergencyAuthority`
 - Optional `releaseRegistry` (if set, upgrades must reference trusted roots)
 - Optional `minUpgradeDelaySec` (timelock)
@@ -202,6 +205,12 @@ Key runtime config (see `blackcat-config`):
 - `trust.web3.contracts.instance_controller`
 - `trust.web3.contracts.release_registry` (optional)
 - `trust.web3.tx_outbox_dir` (optional, for buffering tx during outages)
+
+Optional hardening (recommended for prod):
+- pin security-critical runtime config hashes on-chain via `InstanceController.attestations` and have `blackcat-config` fail closed if the local config does not match.
+- suggested attestation keys (all `bytes32`):
+  - `keccak256("config.runtime.v1")` → `sha256(canonical_runtime_config_bytes)`
+  - `keccak256("config.runtime.sig.v1")` → `sha256(canonical_signature_bundle_bytes)` (if using signed config bundles)
 
 Outage rules (recommended for prod):
 - if RPC quorum is lost: **pause writes immediately**, buffer critical actions to an outbox if available

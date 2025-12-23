@@ -76,6 +76,10 @@ contract InstanceController {
     CompatibilityState public compatibilityState;
     uint64 public compatibilityWindowSec;
 
+    /// @notice Root-controlled attestation slots (extensibility without contract changes).
+    mapping(bytes32 => bytes32) public attestations;
+    mapping(bytes32 => uint64) public attestationUpdatedAt;
+
     uint64 public genesisAt;
     uint64 public lastUpgradeAt;
     uint64 public minUpgradeDelaySec;
@@ -115,6 +119,7 @@ contract InstanceController {
     event CompatibilityWindowChanged(uint64 previousValue, uint64 newValue);
     event CompatibilityStateSet(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 until);
     event CompatibilityStateCleared(bytes32 root, bytes32 uriHash, bytes32 policyHash);
+    event AttestationSet(bytes32 indexed key, bytes32 previousValue, bytes32 newValue, uint64 at);
     event AutoPauseOnBadCheckInChanged(bool previousValue, bool newValue);
     event CheckIn(
         address indexed by, bool ok, bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash
@@ -364,6 +369,40 @@ contract InstanceController {
         require(compat.root != bytes32(0), "InstanceController: no compat state");
         delete compatibilityState;
         emit CompatibilityStateCleared(compat.root, compat.uriHash, compat.policyHash);
+    }
+
+    function setAttestation(bytes32 key, bytes32 value) external onlyRootAuthority {
+        require(key != bytes32(0), "InstanceController: key=0");
+
+        bytes32 previousValue = attestations[key];
+        attestations[key] = value;
+
+        uint64 at = uint64(block.timestamp);
+        attestationUpdatedAt[key] = at;
+        emit AttestationSet(key, previousValue, value, at);
+    }
+
+    function setAttestationExpected(bytes32 key, bytes32 expectedPrevious, bytes32 value) external onlyRootAuthority {
+        require(key != bytes32(0), "InstanceController: key=0");
+        require(attestations[key] == expectedPrevious, "InstanceController: attestation mismatch");
+
+        bytes32 previousValue = attestations[key];
+        attestations[key] = value;
+
+        uint64 at = uint64(block.timestamp);
+        attestationUpdatedAt[key] = at;
+        emit AttestationSet(key, previousValue, value, at);
+    }
+
+    function clearAttestation(bytes32 key) external onlyRootAuthority {
+        require(key != bytes32(0), "InstanceController: key=0");
+        bytes32 previousValue = attestations[key];
+        require(previousValue != bytes32(0), "InstanceController: attestation already cleared");
+
+        attestations[key] = bytes32(0);
+        uint64 at = uint64(block.timestamp);
+        attestationUpdatedAt[key] = at;
+        emit AttestationSet(key, previousValue, bytes32(0), at);
     }
 
     function setAutoPauseOnBadCheckIn(bool newValue) external onlyRootAuthority {

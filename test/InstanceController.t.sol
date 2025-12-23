@@ -91,6 +91,46 @@ contract InstanceControllerTest is TestBase {
         controller.startUpgradeAuthorityTransfer(address(0x6666666666666666666666666666666666666666));
     }
 
+    function test_attestations_are_root_controlled() public {
+        bytes32 key = keccak256("config.runtime.v1");
+        bytes32 v1 = keccak256("v1");
+
+        vm.prank(root);
+        controller.setAttestation(key, v1);
+
+        assertEq(controller.attestations(key), v1, "attestation value mismatch");
+        assertTrue(controller.attestationUpdatedAt(key) != 0, "attestation updatedAt should be set");
+
+        vm.prank(upgrader);
+        vm.expectRevert("InstanceController: not root authority");
+        controller.setAttestation(key, keccak256("v2"));
+    }
+
+    function test_setAttestationExpected_rejects_mismatch() public {
+        bytes32 key = keccak256("config.runtime.v1");
+
+        vm.prank(root);
+        controller.setAttestation(key, keccak256("v1"));
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: attestation mismatch");
+        controller.setAttestationExpected(key, keccak256("wrong"), keccak256("v2"));
+    }
+
+    function test_clearAttestation_rejects_when_already_cleared() public {
+        bytes32 key = keccak256("config.runtime.v1");
+
+        vm.prank(root);
+        controller.setAttestation(key, keccak256("v1"));
+
+        vm.prank(root);
+        controller.clearAttestation(key);
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: attestation already cleared");
+        controller.clearAttestation(key);
+    }
+
     function test_propose_and_activate_upgrade() public {
         bytes32 nextRoot = keccak256("next-root");
         bytes32 nextUriHash = keccak256("next-uri");
