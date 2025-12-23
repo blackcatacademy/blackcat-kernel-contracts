@@ -15,6 +15,8 @@ contract InstanceFactory {
     );
 
     bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
+    uint256 private constant SECP256K1N_HALF =
+        0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
 
     address public immutable implementation;
     address public immutable releaseRegistry;
@@ -223,7 +225,7 @@ contract InstanceFactory {
         (bool ok, bytes memory ret) = signer.staticcall(
             abi.encodeWithSignature("isValidSignature(bytes32,bytes)", digest, signature)
         );
-        return ok && ret.length == 32 && bytes4(ret) == EIP1271_MAGICVALUE;
+        return ok && ret.length >= 4 && bytes4(ret) == EIP1271_MAGICVALUE;
     }
 
     function _recover(bytes32 digest, bytes memory signature) private pure returns (address) {
@@ -242,6 +244,7 @@ contract InstanceFactory {
             v += 27;
         }
         require(v == 27 || v == 28, "InstanceFactory: bad v");
+        require(uint256(s) <= SECP256K1N_HALF, "InstanceFactory: bad s");
 
         address recovered = ecrecover(digest, v, r, s);
         require(recovered != address(0), "InstanceFactory: bad signature");

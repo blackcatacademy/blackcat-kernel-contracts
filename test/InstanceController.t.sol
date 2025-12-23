@@ -4,6 +4,7 @@ import {TestBase} from "./TestBase.sol";
 import {InstanceController} from "../src/InstanceController.sol";
 import {InstanceFactory} from "../src/InstanceFactory.sol";
 import {ReleaseRegistry} from "../src/ReleaseRegistry.sol";
+import {KernelAuthority} from "../src/KernelAuthority.sol";
 
 contract InstanceControllerTest is TestBase {
     InstanceController private controller;
@@ -130,6 +131,171 @@ contract InstanceControllerTest is TestBase {
         controller.activateUpgradeExpected(nextRoot, nextUriHash, keccak256("wrong"));
     }
 
+    function test_activateUpgradeAuthorized_accepts_eoa_root_signature() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        bytes32 nextRoot = keccak256("next-root-auth");
+        bytes32 nextUriHash = keccak256("next-uri-auth");
+        bytes32 nextPolicyHash = keccak256("next-policy-auth");
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        c.activateUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, sig);
+        assertEq(c.activeRoot(), nextRoot, "active root not updated");
+    }
+
+    function test_activateUpgradeAuthorized_accepts_kernelAuthority_root_signature() public {
+        uint256 pk1 = 0xA11CE;
+        uint256 pk2 = 0xB0B;
+        address a1 = vm.addr(pk1);
+        address a2 = vm.addr(pk2);
+
+        address[] memory signers = new address[](2);
+        if (a1 < a2) {
+            signers[0] = a1;
+            signers[1] = a2;
+        } else {
+            signers[0] = a2;
+            signers[1] = a1;
+        }
+        KernelAuthority rootAuth = new KernelAuthority(signers, 2);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(address(rootAuth), upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        bytes32 nextRoot = keccak256("next-root-auth-ka");
+        bytes32 nextUriHash = keccak256("next-uri-auth-ka");
+        bytes32 nextPolicyHash = keccak256("next-policy-auth-ka");
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+
+        bytes[] memory sigs = new bytes[](2);
+        if (a1 < a2) {
+            sigs[0] = _sign(pk1, digest);
+            sigs[1] = _sign(pk2, digest);
+        } else {
+            sigs[0] = _sign(pk2, digest);
+            sigs[1] = _sign(pk1, digest);
+        }
+        bytes memory packed = abi.encode(sigs);
+
+        c.activateUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, packed);
+        assertEq(c.activeRoot(), nextRoot, "active root not updated");
+    }
+
+    function test_cancelUpgradeAuthorized_accepts_eoa_root_signature() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        bytes32 nextRoot = keccak256("next-root-cancel-auth");
+        bytes32 nextUriHash = keccak256("next-uri-cancel-auth");
+        bytes32 nextPolicyHash = keccak256("next-policy-cancel-auth");
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = c.hashCancelUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        bytes memory sig = _sign(rootPk, digest);
+
+        c.cancelUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, sig);
+        (bytes32 cleared,,,,) = c.pendingUpgrade();
+        assertEq(cleared, bytes32(0), "pending not cleared");
+    }
+
+    function test_cancelUpgradeAuthorized_accepts_kernelAuthority_root_signature() public {
+        uint256 pk1 = 0xA11CE;
+        uint256 pk2 = 0xB0B;
+        address a1 = vm.addr(pk1);
+        address a2 = vm.addr(pk2);
+
+        address[] memory signers = new address[](2);
+        if (a1 < a2) {
+            signers[0] = a1;
+            signers[1] = a2;
+        } else {
+            signers[0] = a2;
+            signers[1] = a1;
+        }
+        KernelAuthority rootAuth = new KernelAuthority(signers, 2);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(address(rootAuth), upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        bytes32 nextRoot = keccak256("next-root-cancel-auth-ka");
+        bytes32 nextUriHash = keccak256("next-uri-cancel-auth-ka");
+        bytes32 nextPolicyHash = keccak256("next-policy-cancel-auth-ka");
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = c.hashCancelUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+
+        bytes[] memory sigs = new bytes[](2);
+        if (a1 < a2) {
+            sigs[0] = _sign(pk1, digest);
+            sigs[1] = _sign(pk2, digest);
+        } else {
+            sigs[0] = _sign(pk2, digest);
+            sigs[1] = _sign(pk1, digest);
+        }
+        bytes memory packed = abi.encode(sigs);
+
+        c.cancelUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, packed);
+        (bytes32 cleared,,,,) = c.pendingUpgrade();
+        assertEq(cleared, bytes32(0), "pending not cleared");
+    }
+
+    function test_proposeUpgradeByRelease_uses_registry_values() public {
+        ReleaseRegistry registry = new ReleaseRegistry(address(this));
+        bytes32 component = keccak256("blackcat-core");
+
+        registry.publish(component, 1, genesisRoot, genesisUriHash, 0);
+
+        InstanceFactory strictFactory = new InstanceFactory(address(registry));
+        InstanceController c = InstanceController(
+            strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        bytes32 nextRoot = keccak256("release-root");
+        bytes32 nextUriHash = keccak256("release-uri");
+        registry.publish(component, 2, nextRoot, nextUriHash, 0);
+
+        vm.prank(upgrader);
+        c.proposeUpgradeByRelease(component, 2, keccak256("policy2"), 3600);
+
+        (bytes32 pRoot, bytes32 pUri, bytes32 pPolicy, , ) = c.pendingUpgrade();
+        assertEq(pRoot, nextRoot, "pending root mismatch");
+        assertEq(pUri, nextUriHash, "pending uriHash mismatch");
+        assertEq(pPolicy, keccak256("policy2"), "pending policyHash mismatch");
+    }
+
     function test_cancelUpgradeExpected_rejects_mismatch() public {
         bytes32 nextRoot = keccak256("next-root-cancel");
         bytes32 nextUriHash = keccak256("next-uri-cancel");
@@ -217,6 +383,48 @@ contract InstanceControllerTest is TestBase {
         assertEq(controller.activeRoot(), nextRoot, "active root not updated");
     }
 
+    function test_compatibility_window_allows_previous_state_until_expiry() public {
+        address reporter = address(0x7777777777777777777777777777777777777777);
+
+        vm.prank(root);
+        controller.startReporterAuthorityTransfer(reporter);
+
+        vm.prank(reporter);
+        controller.acceptReporterAuthority();
+
+        vm.prank(root);
+        controller.setCompatibilityWindowSec(3600);
+
+        bytes32 nextRoot = keccak256("next-root-compat");
+        bytes32 nextUriHash = keccak256("next-uri-compat");
+        bytes32 nextPolicyHash = keccak256("next-policy-compat");
+
+        vm.prank(upgrader);
+        controller.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.prank(root);
+        controller.activateUpgrade();
+
+        (bytes32 cRoot, bytes32 cUri, bytes32 cPolicy, uint64 until) = controller.compatibilityState();
+        assertEq(cRoot, genesisRoot, "compat root mismatch");
+        assertEq(cUri, genesisUriHash, "compat uri mismatch");
+        assertEq(cPolicy, genesisPolicyHash, "compat policy mismatch");
+        assertEq(uint256(until), block.timestamp + 3600, "compat until mismatch");
+
+        assertTrue(controller.isAcceptedState(nextRoot, nextUriHash, nextPolicyHash), "active should be accepted");
+        assertTrue(controller.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash), "compat should be accepted");
+
+        vm.prank(reporter);
+        controller.checkIn(genesisRoot, genesisUriHash, genesisPolicyHash);
+        assertTrue(controller.lastCheckInOk(), "compat checkIn should be ok");
+
+        vm.warp(uint256(until) + 1);
+        assertTrue(
+            !controller.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash),
+            "compat should be expired"
+        );
+    }
+
     function test_setMinUpgradeDelaySec_rejects_too_large() public {
         uint64 tooLarge = controller.MAX_UPGRADE_DELAY_SEC() + 1;
 
@@ -296,6 +504,11 @@ contract InstanceControllerTest is TestBase {
         assertEq(controller.lastIncidentBy(), reporter, "incident by mismatch");
     }
 
+    function _sign(uint256 pk, bytes32 digest) private returns (bytes memory) {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
     function test_release_registry_enforces_genesis_and_upgrade_trust() public {
         ReleaseRegistry registry = new ReleaseRegistry(address(this));
         bytes32 component = keccak256("blackcat-core");
@@ -321,6 +534,41 @@ contract InstanceControllerTest is TestBase {
         vm.prank(root);
         vm.expectRevert("InstanceController: root not trusted");
         strictController.activateUpgrade();
+    }
+
+    function test_compatibility_state_rejects_revoked_root_when_registry_is_set() public {
+        ReleaseRegistry registry = new ReleaseRegistry(address(this));
+        bytes32 component = keccak256("blackcat-core");
+
+        registry.publish(component, 1, genesisRoot, genesisUriHash, 0);
+
+        InstanceFactory strictFactory = new InstanceFactory(address(registry));
+        InstanceController c = InstanceController(
+            strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        vm.prank(root);
+        c.setCompatibilityWindowSec(3600);
+
+        bytes32 nextRoot = keccak256("trusted-root-v2");
+        bytes32 nextUriHash = keccak256("trusted-uri-v2");
+        bytes32 nextPolicyHash = keccak256("trusted-policy-v2");
+        registry.publish(component, 2, nextRoot, nextUriHash, 0);
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.prank(root);
+        c.activateUpgrade();
+
+        assertTrue(c.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash), "compat should be accepted");
+
+        registry.revoke(component, 1);
+
+        assertTrue(
+            !c.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash),
+            "compat should reject revoked root"
+        );
     }
 
     function test_initialize_rejects_untrusted_genesis_root_when_registry_is_set() public {

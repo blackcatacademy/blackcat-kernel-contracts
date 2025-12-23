@@ -31,18 +31,18 @@ This roadmap tracks the contract layer of the BlackCat “trust kernel” (Web3 
 - ▢ Expand event assertions + fuzz tests (invariants).
 
 ## Stage 2 — Setup ceremony (multi-device bootstrap)
-- Setup nonce + replay protection.
-- EIP-712 typed “setup request” signatures (offline review + multi-device confirmation).
+- ✅ Replay protection via CREATE2 + salt (signatures cannot be replayed into multiple instances).
+- ✅ EIP-712 typed “setup request” signatures (offline review + multi-device confirmation).
 - Finalization flow:
   - binds the controller to chosen authorities,
   - pins the initial trust mode and policy hash,
   - emits an immutable “genesis” event for the installation.
- - Optional authority mode `KernelAuthority` (EIP-712 threshold signer) for multi-device flows without Safe.
+- ✅ Optional authority mode `KernelAuthority` (EIP-712 threshold signer) for multi-device flows without Safe.
 
 ## Stage 3 — Upgrade state machine + emergency controls
 - ✅ Upgrade flow: `propose → activate` with TTL and optional timelock.
 - ✅ Emergency controls: `pause/unpause` (plus runtime-enforced “unsafe” decisions off-chain).
-- Backward-compatible upgrades: allow overlap windows and multiple roots for migrations.
+- ✅ Backward-compatible upgrades: optional compatibility overlap (rolling migrations).
 
 ## Stage 4 — Deployment + integration artifacts
 - ✅ Deterministic addresses for instances (CREATE2).

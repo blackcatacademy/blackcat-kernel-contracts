@@ -4,11 +4,38 @@ interface IReleaseRegistry {
     function isTrustedRoot(bytes32 root) external view returns (bool);
 }
 
+interface IReleaseRegistryGet {
+    struct Release {
+        bytes32 root;
+        bytes32 uriHash;
+        bytes32 metaHash;
+    }
+
+    function get(bytes32 componentId, uint64 version) external view returns (Release memory);
+}
+
 /// @notice Per-install trust authority for a single BlackCat deployment.
 /// @dev Skeleton contract (not audited, not production-ready).
 contract InstanceController {
+    bytes32 private constant DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 private constant NAME_HASH = keccak256(bytes("BlackCatInstanceController"));
+    bytes32 private constant VERSION_HASH = keccak256(bytes("1"));
+
+    bytes32 private constant ACTIVATE_UPGRADE_TYPEHASH = keccak256(
+        "ActivateUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint64 createdAt,uint64 ttlSec,uint256 deadline)"
+    );
+    bytes32 private constant CANCEL_UPGRADE_TYPEHASH = keccak256(
+        "CancelUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint64 createdAt,uint64 ttlSec,uint256 deadline)"
+    );
+
+    bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
+    uint256 private constant SECP256K1N_HALF =
+        0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
+
     uint8 public constant VERSION = 1;
     uint64 public constant MAX_UPGRADE_DELAY_SEC = 30 days;
+    uint64 public constant MAX_COMPATIBILITY_WINDOW_SEC = 30 days;
 
     struct UpgradeProposal {
         bytes32 root;
@@ -16,6 +43,13 @@ contract InstanceController {
         bytes32 policyHash;
         uint64 createdAt;
         uint64 ttlSec;
+    }
+
+    struct CompatibilityState {
+        bytes32 root;
+        bytes32 uriHash;
+        bytes32 policyHash;
+        uint64 until;
     }
 
     /// @notice Factory or caller that initialized this instance (provenance hint).
@@ -40,6 +74,8 @@ contract InstanceController {
     bytes32 public activePolicyHash;
 
     UpgradeProposal public pendingUpgrade;
+    CompatibilityState public compatibilityState;
+    uint64 public compatibilityWindowSec;
 
     uint64 public genesisAt;
     uint64 public lastUpgradeAt;
@@ -77,9 +113,13 @@ contract InstanceController {
     event ReleaseRegistryChanged(address indexed previousValue, address indexed newValue);
     event ReporterAuthorityChanged(address indexed previousValue, address indexed newValue);
     event MinUpgradeDelayChanged(uint64 previousValue, uint64 newValue);
+    event CompatibilityWindowChanged(uint64 previousValue, uint64 newValue);
+    event CompatibilityStateSet(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 until);
+    event CompatibilityStateCleared(bytes32 root, bytes32 uriHash, bytes32 policyHash);
     event AutoPauseOnBadCheckInChanged(bool previousValue, bool newValue);
     event CheckIn(address indexed by, bool ok, bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash);
     event IncidentReported(address indexed by, bytes32 incidentHash, uint64 at);
+    event AuthoritySignatureConsumed(address indexed authority, bytes32 indexed digest, address indexed relayer);
 
     modifier onlyRootAuthority() {
         require(msg.sender == rootAuthority, "InstanceController: not root authority");
@@ -161,6 +201,10 @@ contract InstanceController {
 
         emit Initialized(factory, rootAuthority_, upgradeAuthority_, emergencyAuthority_);
         emit UpgradeActivated(bytes32(0), genesisRoot, genesisUriHash, genesisPolicyHash);
+    }
+
+    function domainSeparator() public view returns (bytes32) {
+        return keccak256(abi.encode(DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
     }
 
     function pause() external onlyEmergencyOrRootAuthority {
@@ -261,6 +305,14 @@ contract InstanceController {
                     "InstanceController: pending root not trusted"
                 );
             }
+
+            CompatibilityState memory compat = compatibilityState;
+            if (compat.root != bytes32(0) && block.timestamp <= compat.until) {
+                require(
+                    IReleaseRegistry(newValue).isTrustedRoot(compat.root),
+                    "InstanceController: compat root not trusted"
+                );
+            }
         }
         address previousValue = releaseRegistry;
         releaseRegistry = newValue;
@@ -304,20 +356,58 @@ contract InstanceController {
         emit MinUpgradeDelayChanged(previousValue, newValue);
     }
 
+    function setCompatibilityWindowSec(uint64 newValue) external onlyRootAuthority {
+        require(newValue <= MAX_COMPATIBILITY_WINDOW_SEC, "InstanceController: window too large");
+        uint64 previousValue = compatibilityWindowSec;
+        compatibilityWindowSec = newValue;
+        emit CompatibilityWindowChanged(previousValue, newValue);
+    }
+
+    function clearCompatibilityState() external onlyRootAuthority {
+        CompatibilityState memory compat = compatibilityState;
+        require(compat.root != bytes32(0), "InstanceController: no compat state");
+        delete compatibilityState;
+        emit CompatibilityStateCleared(compat.root, compat.uriHash, compat.policyHash);
+    }
+
     function setAutoPauseOnBadCheckIn(bool newValue) external onlyRootAuthority {
         bool previousValue = autoPauseOnBadCheckIn;
         autoPauseOnBadCheckIn = newValue;
         emit AutoPauseOnBadCheckInChanged(previousValue, newValue);
     }
 
+    function isAcceptedState(bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash)
+        public
+        view
+        returns (bool)
+    {
+        if (
+            observedRoot == activeRoot
+                && observedUriHash == activeUriHash
+                && observedPolicyHash == activePolicyHash
+        ) {
+            return _isRootTrusted(observedRoot);
+        }
+
+        CompatibilityState memory compat = compatibilityState;
+        if (compat.root != bytes32(0) && block.timestamp <= compat.until) {
+            if (
+                observedRoot == compat.root
+                    && observedUriHash == compat.uriHash
+                    && observedPolicyHash == compat.policyHash
+            ) {
+                return _isRootTrusted(observedRoot);
+            }
+        }
+
+        return false;
+    }
+
     function checkIn(bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash)
         external
         onlyReporterAuthority
     {
-        bool ok = (!paused)
-            && (observedRoot == activeRoot)
-            && (observedUriHash == activeUriHash)
-            && (observedPolicyHash == activePolicyHash);
+        bool ok = (!paused) && isAcceptedState(observedRoot, observedUriHash, observedPolicyHash);
 
         lastCheckInAt = uint64(block.timestamp);
         lastCheckInOk = ok;
@@ -380,6 +470,35 @@ contract InstanceController {
         emit UpgradeProposed(root, uriHash, policyHash, ttlSec);
     }
 
+    function proposeUpgradeByRelease(bytes32 componentId, uint64 version, bytes32 policyHash, uint64 ttlSec)
+        external
+        onlyUpgradeAuthority
+    {
+        require(componentId != bytes32(0), "InstanceController: componentId=0");
+        require(version != 0, "InstanceController: version=0");
+        require(ttlSec != 0, "InstanceController: ttl=0");
+
+        address registry = releaseRegistry;
+        require(registry != address(0), "InstanceController: no registry");
+
+        try IReleaseRegistryGet(registry).get(componentId, version) returns (IReleaseRegistryGet.Release memory rel) {
+            require(rel.root != bytes32(0), "InstanceController: release not found");
+            require(IReleaseRegistry(registry).isTrustedRoot(rel.root), "InstanceController: root not trusted");
+
+            pendingUpgrade = UpgradeProposal({
+                root: rel.root,
+                uriHash: rel.uriHash,
+                policyHash: policyHash,
+                createdAt: uint64(block.timestamp),
+                ttlSec: ttlSec
+            });
+
+            emit UpgradeProposed(rel.root, rel.uriHash, policyHash, ttlSec);
+        } catch {
+            revert("InstanceController: registry missing get");
+        }
+    }
+
     function cancelUpgrade() external onlyRootOrUpgradeAuthority {
         UpgradeProposal memory upgrade = pendingUpgrade;
         require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
@@ -398,6 +517,48 @@ contract InstanceController {
         emit UpgradeCanceled(msg.sender);
     }
 
+    function hashCancelUpgrade(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint256 deadline)
+        external
+        view
+        returns (bytes32)
+    {
+        UpgradeProposal memory upgrade = pendingUpgrade;
+        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
+        require(
+            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
+            "InstanceController: pending mismatch"
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(CANCEL_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline)
+        );
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
+    }
+
+    function cancelUpgradeAuthorized(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint256 deadline, bytes calldata signature)
+        external
+    {
+        require(block.timestamp <= deadline, "InstanceController: expired");
+
+        UpgradeProposal memory upgrade = pendingUpgrade;
+        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
+        require(
+            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
+            "InstanceController: pending mismatch"
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(CANCEL_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline)
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
+
+        require(_isValidSignatureNow(rootAuthority, digest, signature), "InstanceController: invalid root signature");
+        emit AuthoritySignatureConsumed(rootAuthority, digest, msg.sender);
+
+        delete pendingUpgrade;
+        emit UpgradeCanceled(msg.sender);
+    }
+
     function activateUpgrade() external onlyRootAuthority {
         UpgradeProposal memory upgrade = pendingUpgrade;
         _activateUpgrade(upgrade);
@@ -410,6 +571,47 @@ contract InstanceController {
             upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
             "InstanceController: pending mismatch"
         );
+        _activateUpgrade(upgrade);
+    }
+
+    function hashActivateUpgrade(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint256 deadline)
+        external
+        view
+        returns (bytes32)
+    {
+        UpgradeProposal memory upgrade = pendingUpgrade;
+        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
+        require(
+            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
+            "InstanceController: pending mismatch"
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(ACTIVATE_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline)
+        );
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
+    }
+
+    function activateUpgradeAuthorized(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint256 deadline, bytes calldata signature)
+        external
+    {
+        require(block.timestamp <= deadline, "InstanceController: expired");
+
+        UpgradeProposal memory upgrade = pendingUpgrade;
+        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
+        require(
+            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
+            "InstanceController: pending mismatch"
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(ACTIVATE_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline)
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
+
+        require(_isValidSignatureNow(rootAuthority, digest, signature), "InstanceController: invalid root signature");
+        emit AuthoritySignatureConsumed(rootAuthority, digest, msg.sender);
+
         _activateUpgrade(upgrade);
     }
 
@@ -434,6 +636,8 @@ contract InstanceController {
         }
 
         bytes32 previousRoot = activeRoot;
+        bytes32 previousUriHash = activeUriHash;
+        bytes32 previousPolicyHash = activePolicyHash;
         activeRoot = upgrade.root;
         activeUriHash = upgrade.uriHash;
         activePolicyHash = upgrade.policyHash;
@@ -442,7 +646,76 @@ contract InstanceController {
 
         lastUpgradeAt = uint64(block.timestamp);
 
+        uint64 windowSec = compatibilityWindowSec;
+        if (windowSec != 0) {
+            uint64 until = uint64(block.timestamp + windowSec);
+            compatibilityState = CompatibilityState({
+                root: previousRoot,
+                uriHash: previousUriHash,
+                policyHash: previousPolicyHash,
+                until: until
+            });
+            emit CompatibilityStateSet(previousRoot, previousUriHash, previousPolicyHash, until);
+        } else {
+            CompatibilityState memory compat = compatibilityState;
+            if (compat.root != bytes32(0)) {
+                delete compatibilityState;
+                emit CompatibilityStateCleared(compat.root, compat.uriHash, compat.policyHash);
+            }
+        }
+
         emit UpgradeActivated(previousRoot, activeRoot, activeUriHash, activePolicyHash);
+    }
+
+    function _isRootTrusted(bytes32 root) private view returns (bool) {
+        address registry = releaseRegistry;
+        if (registry == address(0)) {
+            return true;
+        }
+
+        try IReleaseRegistry(registry).isTrustedRoot(root) returns (bool ok) {
+            return ok;
+        } catch {
+            return false;
+        }
+    }
+
+    function _isValidSignatureNow(address signer, bytes32 digest, bytes memory signature)
+        private
+        view
+        returns (bool)
+    {
+        if (signer.code.length == 0) {
+            return _recover(digest, signature) == signer;
+        }
+
+        (bool ok, bytes memory ret) = signer.staticcall(
+            abi.encodeWithSignature("isValidSignature(bytes32,bytes)", digest, signature)
+        );
+        return ok && ret.length >= 4 && bytes4(ret) == EIP1271_MAGICVALUE;
+    }
+
+    function _recover(bytes32 digest, bytes memory signature) private pure returns (address) {
+        require(signature.length == 65, "InstanceController: bad signature length");
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := mload(add(signature, 0x20))
+            s := mload(add(signature, 0x40))
+            v := byte(0, mload(add(signature, 0x60)))
+        }
+
+        if (v < 27) {
+            v += 27;
+        }
+        require(v == 27 || v == 28, "InstanceController: bad v");
+        require(uint256(s) <= SECP256K1N_HALF, "InstanceController: bad s");
+
+        address recovered = ecrecover(digest, v, r, s);
+        require(recovered != address(0), "InstanceController: bad signature");
+        return recovered;
     }
 
     function _recordIncident(address by, bytes32 incidentHash) private {

@@ -95,6 +95,9 @@ State:
 - `activeRoot`, `activeUriHash`, `activePolicyHash`
 - `paused`
 - `pendingUpgrade` (proposal with TTL)
+- Optional compatibility overlap (rolling upgrades):
+  - `compatibilityWindowSec` (auto-sets a temporary compatibility state after activation)
+  - `compatibilityState` (previous `{root, uriHash, policyHash}` accepted until `until`)
 - `rootAuthority`, `upgradeAuthority`, `emergencyAuthority`
 - Optional `releaseRegistry` (if set, upgrades must reference trusted roots)
 - Optional `minUpgradeDelaySec` (timelock)
@@ -104,11 +107,36 @@ State:
 
 Upgrade flow (v1):
 1. `proposeUpgrade(root, uriHash, policyHash, ttlSec)` (upgrade authority)
+   - Optional: `proposeUpgradeByRelease(componentId, version, policyHash, ttlSec)` fetches `{root, uriHash}` from `ReleaseRegistry.get(...)`.
 2. Optional: `cancelUpgrade()` (root authority or upgrade authority)
+   - Optional: `cancelUpgradeAuthorized(...)` allows a relayer to cancel using a `rootAuthority` EIP-712 signature (EOA or EIP-1271).
 3. `activateUpgrade()` (root authority, within TTL and after timelock, if configured)
+   - Optional: `activateUpgradeAuthorized(...)` allows a relayer to activate using a `rootAuthority` EIP-712 signature (EOA or EIP-1271).
 4. Optional safety helpers (same auth as above):
    - `cancelUpgradeExpected(...)` to avoid cancelling the wrong pending proposal.
    - `activateUpgradeExpected(...)` to avoid activating an unexpected pending proposal.
+
+Compatibility overlap (optional):
+- If `compatibilityWindowSec` is non-zero, `activateUpgrade*` stores the previous active `{root, uriHash, policyHash}` as `compatibilityState` for `compatibilityWindowSec`.
+- During the overlap window, `isAcceptedState(...)` returns true for either the current active state or the compatibility state (rolling upgrades).
+- If `releaseRegistry` is set, both active and compatibility roots must still be trusted in the registry to be accepted.
+- Control plane:
+  - `setCompatibilityWindowSec(sec)` (root authority; bounded by `MAX_COMPATIBILITY_WINDOW_SEC`)
+  - `clearCompatibilityState()` (root authority)
+
+Authorized upgrade actions (optional, for relayers):
+- EIP-712 domain:
+  - `name`: `BlackCatInstanceController`
+  - `version`: `1`
+  - `chainId`: `block.chainid`
+  - `verifyingContract`: the controller address
+- Digests include the current `pendingUpgrade.createdAt` and `pendingUpgrade.ttlSec`, so signatures cannot be replayed across different proposals.
+- Helpers:
+  - `hashActivateUpgrade(root, uriHash, policyHash, deadline)` → digest
+  - `hashCancelUpgrade(root, uriHash, policyHash, deadline)` → digest
+- Execution:
+  - `activateUpgradeAuthorized(...)` / `cancelUpgradeAuthorized(...)` accept signatures from `rootAuthority` (EOA or EIP-1271 contract).
+  - The controller emits `AuthoritySignatureConsumed(authority, digest, relayer)` for audit traces.
 
 If `releaseRegistry` is set:
 - `initialize(...)` requires the genesis `root` to be trusted in the registry.
