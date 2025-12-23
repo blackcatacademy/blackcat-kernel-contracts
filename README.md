@@ -73,6 +73,12 @@ Scripts live in `blackcat-kernel-contracts/script/` and intentionally avoid exte
   - `blackcat-kernel-contracts/script/SetMinUpgradeDelay.s.sol`
   - `blackcat-kernel-contracts/script/SetAutoPauseOnBadCheckIn.s.sol`
   - `blackcat-kernel-contracts/script/ClearReporterAuthority.s.sol`
+  - `blackcat-kernel-contracts/script/SetReleaseRegistry.s.sol`
+  - Authority rotation helpers:
+    - Root: `blackcat-kernel-contracts/script/StartRootAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptRootAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelRootAuthorityTransfer.s.sol`
+    - Upgrade: `blackcat-kernel-contracts/script/StartUpgradeAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptUpgradeAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelUpgradeAuthorityTransfer.s.sol`
+    - Emergency: `blackcat-kernel-contracts/script/StartEmergencyAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptEmergencyAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelEmergencyAuthorityTransfer.s.sol`
+    - Reporter: `blackcat-kernel-contracts/script/StartReporterAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptReporterAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelReporterAuthorityTransfer.s.sol`
 - Upload ManifestStore blobs: `blackcat-kernel-contracts/script/UploadManifestBlob.s.sol`
 
 **Note:** contracts are not audited. Do not use in production until reviewed.

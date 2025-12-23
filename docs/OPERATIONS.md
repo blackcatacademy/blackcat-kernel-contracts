@@ -71,6 +71,27 @@ Relayer variants:
 - `checkInAuthorized(...)`, `reportIncidentAuthorized(...)`, `setPausedAuthorized(...)`
   are intended for CLI/tooling that collects signatures on isolated devices and submits via a relayer.
 
+## ReleaseRegistry pointer (controller)
+
+If you deploy a new `ReleaseRegistry` (or want to remove enforcement), update the controller pointer:
+- Set/clear: `SetReleaseRegistry.s.sol`
+
+Notes:
+- In strict mode, switching registries is validated: the new registry must trust the current active root (and any pending/compat roots).
+- Clearing the registry pointer disables registry enforcement (dev only; not recommended for production).
+
+## Authority rotation (controller)
+
+All authorities use a 2-step transfer to reduce operator mistakes:
+1. Start transfer (root authority)
+2. Accept transfer (new authority)
+
+Scripts:
+- Root authority: `StartRootAuthorityTransfer.s.sol`, `AcceptRootAuthority.s.sol`, `CancelRootAuthorityTransfer.s.sol`
+- Upgrade authority: `StartUpgradeAuthorityTransfer.s.sol`, `AcceptUpgradeAuthority.s.sol`, `CancelUpgradeAuthorityTransfer.s.sol`
+- Emergency authority: `StartEmergencyAuthorityTransfer.s.sol`, `AcceptEmergencyAuthority.s.sol`, `CancelEmergencyAuthorityTransfer.s.sol`
+- Reporter authority: `StartReporterAuthorityTransfer.s.sol`, `AcceptReporterAuthority.s.sol`, `CancelReporterAuthorityTransfer.s.sol`
+
 ## Attestations (pinning)
 
 The controller provides `attestations[key]=value` slots (root authority) to pin additional integrity facts on-chain.
