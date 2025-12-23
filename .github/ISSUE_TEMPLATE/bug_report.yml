@@ -1,0 +1,32 @@
+name: Bug report
+description: Report a bug in BlackCat Kernel Contracts
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: 1) … 2) … 3) …
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions / environment
+      description: Include Foundry version, solc version, chain id (if relevant).
+      render: shell
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / console output
+      render: shell
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra context
+
