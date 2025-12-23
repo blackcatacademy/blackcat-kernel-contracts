@@ -13,11 +13,11 @@ contract KernelAuthority {
     bytes32 private constant EXECUTE_TYPEHASH =
         keccak256("Execute(address target,uint256 value,bytes32 dataHash,uint256 nonce,uint256 deadline)");
 
-    bytes32 private constant EXECUTE_BATCH_TYPEHASH =
-        keccak256("ExecuteBatch(bytes32 targetsHash,bytes32 valuesHash,bytes32 dataHashesHash,uint256 nonce,uint256 deadline)");
+    bytes32 private constant EXECUTE_BATCH_TYPEHASH = keccak256(
+        "ExecuteBatch(bytes32 targetsHash,bytes32 valuesHash,bytes32 dataHashesHash,uint256 nonce,uint256 deadline)"
+    );
 
-    uint256 private constant SECP256K1N_HALF =
-        0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
+    uint256 private constant SECP256K1N_HALF = 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
 
     mapping(address => bool) public isSigner;
     address[] private signers;
@@ -48,9 +48,7 @@ contract KernelAuthority {
         view
         returns (bytes32)
     {
-        bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_TYPEHASH, target, value, keccak256(data), nonce_, deadline)
-        );
+        bytes32 structHash = keccak256(abi.encode(EXECUTE_TYPEHASH, target, value, keccak256(data), nonce_, deadline));
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
     }
 
@@ -81,9 +79,7 @@ contract KernelAuthority {
         require(block.timestamp <= deadline, "KernelAuthority: expired");
 
         uint256 nonce_ = nonce;
-        bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_TYPEHASH, target, value, keccak256(data), nonce_, deadline)
-        );
+        bytes32 structHash = keccak256(abi.encode(EXECUTE_TYPEHASH, target, value, keccak256(data), nonce_, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
 
         _checkSignatures(digest, signatures);

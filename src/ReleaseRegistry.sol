@@ -83,9 +83,7 @@ contract ReleaseRegistry {
         }
     }
 
-    function _publish(bytes32 componentId, uint64 version, bytes32 root, bytes32 uriHash, bytes32 metaHash)
-        private
-    {
+    function _publish(bytes32 componentId, uint64 version, bytes32 root, bytes32 uriHash, bytes32 metaHash) private {
         require(componentId != bytes32(0), "ReleaseRegistry: componentId=0");
         require(version != 0, "ReleaseRegistry: version=0");
         require(root != bytes32(0), "ReleaseRegistry: root=0");

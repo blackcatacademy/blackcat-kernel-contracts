@@ -17,11 +17,13 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 - `InstanceFactory`: creates/clones `InstanceController` per install and runs the setup ceremony (CREATE + CREATE2).
 - `InstanceController`: per-install state machine (propose → stage → activate upgrades), pause/unpause, and history events.
 - `KernelAuthority` (optional): minimal EIP-712 threshold signer authority (multi-device by design without Safe dependency).
+- `ManifestStore` (optional): append-only on-chain blob store for manifests (“full detail” mode availability).
 
 ## Spec
 
 - `blackcat-kernel-contracts/docs/SPEC.md`
 - `blackcat-kernel-contracts/docs/AUTHORITY_MODES.md`
+- `blackcat-kernel-contracts/docs/ROADMAP.md`
 
 ## Governance model (planned)
 
@@ -45,5 +47,14 @@ Run via Docker (recommended for consistent solc/forge versions):
 
 - Format: `docker run --rm -v "$PWD":/app -w /app --entrypoint forge ghcr.io/foundry-rs/foundry:latest fmt`
 - Test: `docker run --rm -v "$PWD":/app -w /app --entrypoint forge ghcr.io/foundry-rs/foundry:latest test`
+
+## Deployment (Foundry)
+
+Scripts live in `blackcat-kernel-contracts/script/` and intentionally avoid external dependencies.
+
+- Deploy registry + factory: `blackcat-kernel-contracts/script/DeployAll.s.sol`
+- Deploy only registry: `blackcat-kernel-contracts/script/DeployReleaseRegistry.s.sol`
+- Deploy only factory: `blackcat-kernel-contracts/script/DeployInstanceFactory.s.sol`
+- Publish/revoke releases: `blackcat-kernel-contracts/script/PublishRelease.s.sol`, `blackcat-kernel-contracts/script/RevokeRelease.s.sol`
 
 **Note:** contracts are not audited. Do not use in production until reviewed.

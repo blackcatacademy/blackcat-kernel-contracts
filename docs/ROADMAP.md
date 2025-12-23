@@ -22,6 +22,7 @@ This roadmap tracks the contract layer of the BlackCat “trust kernel” (Web3 
   - `ReleaseRegistry` mapping `componentId+version → root, uri, meta`,
   - `InstanceController` storing `active_root`, `active_uri`, `paused`, and upgrade slots,
   - `InstanceFactory` cloning controllers and emitting setup receipts.
+- ✅ Optional `ManifestStore` for on-chain blob availability (paranoid “full detail” mode).
 - ✅ Add revocation/trust model to `ReleaseRegistry` (`revoke`, `isTrustedRoot`).
 - ✅ Add optional `ReleaseRegistry` enforcement to `InstanceController` (genesis + upgrades).
 - ✅ Add optional upgrade timelock (`minUpgradeDelaySec`) and reporter check-ins to `InstanceController`.
@@ -46,7 +47,7 @@ This roadmap tracks the contract layer of the BlackCat “trust kernel” (Web3 
 
 ## Stage 4 — Deployment + integration artifacts
 - ✅ Deterministic addresses for instances (CREATE2).
-- Deploy scripts for factories/registries.
+- ✅ Deploy scripts for factories/registries + release ops (Foundry scripts).
 - Publish ABI + versioned artifacts to be consumed by:
   - `blackcat-core` runtime enforcement,
   - `blackcat-cli` / `blackcat-installer` operator flows.

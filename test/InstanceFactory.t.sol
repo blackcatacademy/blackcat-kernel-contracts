@@ -52,8 +52,9 @@ contract InstanceFactoryTest is TestBase {
     function test_createInstanceDeterministic_matches_predict() public {
         bytes32 salt = keccak256("salt-1");
         address predicted = factory.predictInstanceAddress(salt);
-        address instance =
-            factory.createInstanceDeterministic(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt);
+        address instance = factory.createInstanceDeterministic(
+            root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt
+        );
 
         assertEq(instance, predicted, "predicted address mismatch");
         assertTrue(factory.isInstance(instance), "factory must mark instance");
@@ -62,10 +63,14 @@ contract InstanceFactoryTest is TestBase {
 
     function test_createInstanceDeterministic_reverts_on_salt_reuse() public {
         bytes32 salt = keccak256("salt-2");
-        factory.createInstanceDeterministic(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt);
+        factory.createInstanceDeterministic(
+            root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt
+        );
 
         vm.expectRevert("InstanceFactory: clone failed");
-        factory.createInstanceDeterministic(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt);
+        factory.createInstanceDeterministic(
+            root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt
+        );
     }
 
     function test_createInstanceDeterministicAuthorized_accepts_eoa_root_signature() public {
@@ -125,7 +130,15 @@ contract InstanceFactoryTest is TestBase {
         bytes memory packed = abi.encode(sigs);
 
         address instance = factory.createInstanceDeterministicAuthorized(
-            address(rootAuth), upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline, packed
+            address(rootAuth),
+            upgrader,
+            emergency,
+            genesisRoot,
+            genesisUriHash,
+            genesisPolicyHash,
+            salt,
+            deadline,
+            packed
         );
 
         assertEq(instance, factory.predictInstanceAddress(salt), "predicted address mismatch");

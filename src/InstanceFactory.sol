@@ -15,8 +15,7 @@ contract InstanceFactory {
     );
 
     bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
-    uint256 private constant SECP256K1N_HALF =
-        0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
+    uint256 private constant SECP256K1N_HALF = 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
 
     address public immutable implementation;
     address public immutable releaseRegistry;
@@ -85,15 +84,16 @@ contract InstanceFactory {
         bytes32 genesisPolicyHash
     ) external returns (address) {
         address instance = _clone(implementation);
-        InstanceController(instance).initialize(
-            rootAuthority,
-            upgradeAuthority,
-            emergencyAuthority,
-            releaseRegistry,
-            genesisRoot,
-            genesisUriHash,
-            genesisPolicyHash
-        );
+        InstanceController(instance)
+            .initialize(
+                rootAuthority,
+                upgradeAuthority,
+                emergencyAuthority,
+                releaseRegistry,
+                genesisRoot,
+                genesisUriHash,
+                genesisPolicyHash
+            );
 
         isInstance[instance] = true;
         emit InstanceCreated(instance, rootAuthority, upgradeAuthority, emergencyAuthority, msg.sender);
@@ -110,15 +110,16 @@ contract InstanceFactory {
         bytes32 salt
     ) external returns (address) {
         address instance = _cloneDeterministic(implementation, salt);
-        InstanceController(instance).initialize(
-            rootAuthority,
-            upgradeAuthority,
-            emergencyAuthority,
-            releaseRegistry,
-            genesisRoot,
-            genesisUriHash,
-            genesisPolicyHash
-        );
+        InstanceController(instance)
+            .initialize(
+                rootAuthority,
+                upgradeAuthority,
+                emergencyAuthority,
+                releaseRegistry,
+                genesisRoot,
+                genesisUriHash,
+                genesisPolicyHash
+            );
 
         isInstance[instance] = true;
         emit InstanceCreatedDeterministic(
@@ -158,15 +159,16 @@ contract InstanceFactory {
         );
 
         address instance = _cloneDeterministic(implementation, salt);
-        InstanceController(instance).initialize(
-            rootAuthority,
-            upgradeAuthority,
-            emergencyAuthority,
-            releaseRegistry,
-            genesisRoot,
-            genesisUriHash,
-            genesisPolicyHash
-        );
+        InstanceController(instance)
+            .initialize(
+                rootAuthority,
+                upgradeAuthority,
+                emergencyAuthority,
+                releaseRegistry,
+                genesisRoot,
+                genesisUriHash,
+                genesisPolicyHash
+            );
 
         isInstance[instance] = true;
         emit InstanceCreatedDeterministic(
@@ -178,9 +180,7 @@ contract InstanceFactory {
     function predictInstanceAddress(bytes32 salt) external view returns (address) {
         bytes32 initCodeHash = keccak256(
             abi.encodePacked(
-                hex"3d602d80600a3d3981f3363d3d373d3d3d363d73",
-                implementation,
-                hex"5af43d82803e903d91602b57fd5bf3"
+                hex"3d602d80600a3d3981f3363d3d373d3d3d363d73", implementation, hex"5af43d82803e903d91602b57fd5bf3"
             )
         );
 
@@ -213,18 +213,13 @@ contract InstanceFactory {
         require(instance != address(0), "InstanceFactory: clone failed");
     }
 
-    function _isValidSignatureNow(address signer, bytes32 digest, bytes memory signature)
-        private
-        view
-        returns (bool)
-    {
+    function _isValidSignatureNow(address signer, bytes32 digest, bytes memory signature) private view returns (bool) {
         if (signer.code.length == 0) {
             return _recover(digest, signature) == signer;
         }
 
-        (bool ok, bytes memory ret) = signer.staticcall(
-            abi.encodeWithSignature("isValidSignature(bytes32,bytes)", digest, signature)
-        );
+        (bool ok, bytes memory ret) =
+            signer.staticcall(abi.encodeWithSignature("isValidSignature(bytes32,bytes)", digest, signature));
         return ok && ret.length >= 4 && bytes4(ret) == EIP1271_MAGICVALUE;
     }
 

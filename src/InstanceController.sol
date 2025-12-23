@@ -30,8 +30,7 @@ contract InstanceController {
     );
 
     bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
-    uint256 private constant SECP256K1N_HALF =
-        0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
+    uint256 private constant SECP256K1N_HALF = 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
 
     uint8 public constant VERSION = 1;
     uint64 public constant MAX_UPGRADE_DELAY_SEC = 30 days;
@@ -117,7 +116,9 @@ contract InstanceController {
     event CompatibilityStateSet(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 until);
     event CompatibilityStateCleared(bytes32 root, bytes32 uriHash, bytes32 policyHash);
     event AutoPauseOnBadCheckInChanged(bool previousValue, bool newValue);
-    event CheckIn(address indexed by, bool ok, bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash);
+    event CheckIn(
+        address indexed by, bool ok, bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash
+    );
     event IncidentReported(address indexed by, bytes32 incidentHash, uint64 at);
     event AuthoritySignatureConsumed(address indexed authority, bytes32 indexed digest, address indexed relayer);
 
@@ -293,24 +294,19 @@ contract InstanceController {
     function setReleaseRegistry(address newValue) external onlyRootAuthority {
         if (newValue != address(0)) {
             require(newValue.code.length != 0, "InstanceController: registry not contract");
-            require(
-                IReleaseRegistry(newValue).isTrustedRoot(activeRoot),
-                "InstanceController: active root not trusted"
-            );
+            require(IReleaseRegistry(newValue).isTrustedRoot(activeRoot), "InstanceController: active root not trusted");
 
             UpgradeProposal memory p = pendingUpgrade;
             if (p.root != bytes32(0)) {
                 require(
-                    IReleaseRegistry(newValue).isTrustedRoot(p.root),
-                    "InstanceController: pending root not trusted"
+                    IReleaseRegistry(newValue).isTrustedRoot(p.root), "InstanceController: pending root not trusted"
                 );
             }
 
             CompatibilityState memory compat = compatibilityState;
             if (compat.root != bytes32(0) && block.timestamp <= compat.until) {
                 require(
-                    IReleaseRegistry(newValue).isTrustedRoot(compat.root),
-                    "InstanceController: compat root not trusted"
+                    IReleaseRegistry(newValue).isTrustedRoot(compat.root), "InstanceController: compat root not trusted"
                 );
             }
         }
@@ -381,19 +377,14 @@ contract InstanceController {
         view
         returns (bool)
     {
-        if (
-            observedRoot == activeRoot
-                && observedUriHash == activeUriHash
-                && observedPolicyHash == activePolicyHash
-        ) {
+        if (observedRoot == activeRoot && observedUriHash == activeUriHash && observedPolicyHash == activePolicyHash) {
             return _isRootTrusted(observedRoot);
         }
 
         CompatibilityState memory compat = compatibilityState;
         if (compat.root != bytes32(0) && block.timestamp <= compat.until) {
             if (
-                observedRoot == compat.root
-                    && observedUriHash == compat.uriHash
+                observedRoot == compat.root && observedUriHash == compat.uriHash
                     && observedPolicyHash == compat.policyHash
             ) {
                 return _isRootTrusted(observedRoot);
@@ -437,9 +428,7 @@ contract InstanceController {
     function reportIncident(bytes32 incidentHash) external {
         require(incidentHash != bytes32(0), "InstanceController: incidentHash=0");
         require(
-            msg.sender == rootAuthority
-                || msg.sender == emergencyAuthority
-                || msg.sender == reporterAuthority,
+            msg.sender == rootAuthority || msg.sender == emergencyAuthority || msg.sender == reporterAuthority,
             "InstanceController: not incident reporter"
         );
 
@@ -506,7 +495,10 @@ contract InstanceController {
         emit UpgradeCanceled(msg.sender);
     }
 
-    function cancelUpgradeExpected(bytes32 root, bytes32 uriHash, bytes32 policyHash) external onlyRootOrUpgradeAuthority {
+    function cancelUpgradeExpected(bytes32 root, bytes32 uriHash, bytes32 policyHash)
+        external
+        onlyRootOrUpgradeAuthority
+    {
         UpgradeProposal memory upgrade = pendingUpgrade;
         require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
         require(
@@ -535,9 +527,13 @@ contract InstanceController {
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
     }
 
-    function cancelUpgradeAuthorized(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint256 deadline, bytes calldata signature)
-        external
-    {
+    function cancelUpgradeAuthorized(
+        bytes32 root,
+        bytes32 uriHash,
+        bytes32 policyHash,
+        uint256 deadline,
+        bytes calldata signature
+    ) external {
         require(block.timestamp <= deadline, "InstanceController: expired");
 
         UpgradeProposal memory upgrade = pendingUpgrade;
@@ -587,14 +583,20 @@ contract InstanceController {
         );
 
         bytes32 structHash = keccak256(
-            abi.encode(ACTIVATE_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline)
+            abi.encode(
+                ACTIVATE_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline
+            )
         );
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
     }
 
-    function activateUpgradeAuthorized(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint256 deadline, bytes calldata signature)
-        external
-    {
+    function activateUpgradeAuthorized(
+        bytes32 root,
+        bytes32 uriHash,
+        bytes32 policyHash,
+        uint256 deadline,
+        bytes calldata signature
+    ) external {
         require(block.timestamp <= deadline, "InstanceController: expired");
 
         UpgradeProposal memory upgrade = pendingUpgrade;
@@ -605,7 +607,9 @@ contract InstanceController {
         );
 
         bytes32 structHash = keccak256(
-            abi.encode(ACTIVATE_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline)
+            abi.encode(
+                ACTIVATE_UPGRADE_TYPEHASH, root, uriHash, policyHash, upgrade.createdAt, upgrade.ttlSec, deadline
+            )
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
 
@@ -629,10 +633,7 @@ contract InstanceController {
 
         address registry = releaseRegistry;
         if (registry != address(0)) {
-            require(
-                IReleaseRegistry(registry).isTrustedRoot(upgrade.root),
-                "InstanceController: root not trusted"
-            );
+            require(IReleaseRegistry(registry).isTrustedRoot(upgrade.root), "InstanceController: root not trusted");
         }
 
         bytes32 previousRoot = activeRoot;
@@ -650,10 +651,7 @@ contract InstanceController {
         if (windowSec != 0) {
             uint64 until = uint64(block.timestamp + windowSec);
             compatibilityState = CompatibilityState({
-                root: previousRoot,
-                uriHash: previousUriHash,
-                policyHash: previousPolicyHash,
-                until: until
+                root: previousRoot, uriHash: previousUriHash, policyHash: previousPolicyHash, until: until
             });
             emit CompatibilityStateSet(previousRoot, previousUriHash, previousPolicyHash, until);
         } else {
@@ -680,18 +678,13 @@ contract InstanceController {
         }
     }
 
-    function _isValidSignatureNow(address signer, bytes32 digest, bytes memory signature)
-        private
-        view
-        returns (bool)
-    {
+    function _isValidSignatureNow(address signer, bytes32 digest, bytes memory signature) private view returns (bool) {
         if (signer.code.length == 0) {
             return _recover(digest, signature) == signer;
         }
 
-        (bool ok, bytes memory ret) = signer.staticcall(
-            abi.encodeWithSignature("isValidSignature(bytes32,bytes)", digest, signature)
-        );
+        (bool ok, bytes memory ret) =
+            signer.staticcall(abi.encodeWithSignature("isValidSignature(bytes32,bytes)", digest, signature));
         return ok && ret.length >= 4 && bytes4(ret) == EIP1271_MAGICVALUE;
     }
 

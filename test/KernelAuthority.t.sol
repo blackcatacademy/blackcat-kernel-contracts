@@ -216,10 +216,14 @@ contract KernelAuthorityTest is TestBase {
         assertEq(authority.isValidSignature(digest, packed2), bytes4(0), "should be invalid");
     }
 
-    function _signExecute(Signer memory signer, address target, uint256 value, bytes memory data, uint256 nonce_, uint256 deadline)
-        private
-        returns (bytes memory)
-    {
+    function _signExecute(
+        Signer memory signer,
+        address target,
+        uint256 value,
+        bytes memory data,
+        uint256 nonce_,
+        uint256 deadline
+    ) private returns (bytes memory) {
         bytes32 digest = authority.hashExecute(target, value, data, nonce_, deadline);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signer.pk, digest);
         return abi.encodePacked(r, s, v);

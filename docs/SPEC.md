@@ -87,6 +87,22 @@ Notes:
 - Operators can publish/revoke in batches (`publishBatch`, `revokeBatch`) and revoke by root (`revokeByRoot`) for operational convenience.
 - A reverse lookup is available (`getByRoot(root)`) for tooling/inspection.
 
+### `ManifestStore` (optional, paranoid “full detail” mode)
+
+Purpose: provide **on-chain availability** for large manifests/blobs without relying on off-chain hosting.
+
+Core idea:
+- store a blob as **append-only chunks** keyed by an off-chain `blobHash` (`bytes32`),
+- consumers reconstruct the blob by reading chunks `0..chunkCount-1` via `eth_call`,
+- consumers MUST verify the reconstructed bytes off-chain (e.g., `sha256(blobBytes) == blobHash`).
+
+Notes:
+- Writes are **owner-gated** to prevent third-party sabotage of official blobs.
+- The contract intentionally does not attempt to recompute `blobHash` on-chain (keeps gas bounded and code smaller).
+- `uriHash` in the trust kernel can point to a ManifestStore blob via a stable URI string, e.g.:
+  - `evm-manifest://chain=4207;store=0x...;blob=0x...`
+  - and then `uriHash = sha256(uri_string_bytes)`.
+
 ### `InstanceController` (per install)
 
 Purpose: per-install trust authority holding active attested state and upgrade history.

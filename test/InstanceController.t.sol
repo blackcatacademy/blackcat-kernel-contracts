@@ -290,7 +290,7 @@ contract InstanceControllerTest is TestBase {
         vm.prank(upgrader);
         c.proposeUpgradeByRelease(component, 2, keccak256("policy2"), 3600);
 
-        (bytes32 pRoot, bytes32 pUri, bytes32 pPolicy, , ) = c.pendingUpgrade();
+        (bytes32 pRoot, bytes32 pUri, bytes32 pPolicy,,) = c.pendingUpgrade();
         assertEq(pRoot, nextRoot, "pending root mismatch");
         assertEq(pUri, nextUriHash, "pending uriHash mismatch");
         assertEq(pPolicy, keccak256("policy2"), "pending policyHash mismatch");
@@ -324,7 +324,7 @@ contract InstanceControllerTest is TestBase {
         vm.prank(reporter);
         controller.checkIn(keccak256("wrong-root"), genesisUriHash, genesisPolicyHash);
 
-        (bool autoPause, , , , , , uint64 incidentCount_, , , ) = controller.snapshotV2();
+        (bool autoPause,,,,,, uint64 incidentCount_,,,) = controller.snapshotV2();
         bool paused_ = controller.paused();
 
         assertTrue(paused_, "paused should be true");
@@ -412,7 +412,9 @@ contract InstanceControllerTest is TestBase {
         assertEq(uint256(until), block.timestamp + 3600, "compat until mismatch");
 
         assertTrue(controller.isAcceptedState(nextRoot, nextUriHash, nextPolicyHash), "active should be accepted");
-        assertTrue(controller.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash), "compat should be accepted");
+        assertTrue(
+            controller.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash), "compat should be accepted"
+        );
 
         vm.prank(reporter);
         controller.checkIn(genesisRoot, genesisUriHash, genesisPolicyHash);
@@ -420,8 +422,7 @@ contract InstanceControllerTest is TestBase {
 
         vm.warp(uint256(until) + 1);
         assertTrue(
-            !controller.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash),
-            "compat should be expired"
+            !controller.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash), "compat should be expired"
         );
     }
 
@@ -516,7 +517,8 @@ contract InstanceControllerTest is TestBase {
         registry.publish(component, 1, genesisRoot, 0, 0);
 
         InstanceFactory strictFactory = new InstanceFactory(address(registry));
-        address instance = strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash);
+        address instance =
+            strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash);
         InstanceController strictController = InstanceController(instance);
 
         vm.prank(upgrader);
@@ -566,8 +568,7 @@ contract InstanceControllerTest is TestBase {
         registry.revoke(component, 1);
 
         assertTrue(
-            !c.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash),
-            "compat should reject revoked root"
+            !c.isAcceptedState(genesisRoot, genesisUriHash, genesisPolicyHash), "compat should reject revoked root"
         );
     }
 
