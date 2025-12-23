@@ -60,6 +60,7 @@ Canonical algorithms (single source of truth lives in `blackcat-integrity`):
   - entries are sorted lexicographically by normalized path.
 - `uriHash`: `sha256(uri_string_bytes)` (exact bytes; no implicit normalization).
 - `policyHash`: `sha256(canonical_json(policy))` where canonical JSON is defined by `blackcat-integrity/src/TrustKernel/CanonicalJson.php` and policy schema by `blackcat-integrity/src/TrustKernel/TrustPolicyV1.php`.
+- Baseline `root+uri` receipt helper: `blackcat-integrity/src/TrustKernel/RootUriReceiptV1.php`
 
 ## On-chain components
 
