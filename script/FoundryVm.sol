@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 interface FoundryVm {
     function envUint(string calldata name) external returns (uint256);
     function envAddress(string calldata name) external returns (address);
+    function envBytes(string calldata name) external returns (bytes memory);
     function envBytes32(string calldata name) external returns (bytes32);
     function envString(string calldata name) external returns (string memory);
 

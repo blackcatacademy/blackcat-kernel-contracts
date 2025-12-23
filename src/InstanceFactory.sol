@@ -101,34 +101,6 @@ contract InstanceFactory {
         return instance;
     }
 
-    function createInstanceDeterministic(
-        address rootAuthority,
-        address upgradeAuthority,
-        address emergencyAuthority,
-        bytes32 genesisRoot,
-        bytes32 genesisUriHash,
-        bytes32 genesisPolicyHash,
-        bytes32 salt
-    ) external returns (address) {
-        address instance = _cloneDeterministic(implementation, salt);
-        InstanceController(instance)
-            .initialize(
-                rootAuthority,
-                upgradeAuthority,
-                emergencyAuthority,
-                releaseRegistry,
-                genesisRoot,
-                genesisUriHash,
-                genesisPolicyHash
-            );
-
-        isInstance[instance] = true;
-        emit InstanceCreatedDeterministic(
-            instance, salt, rootAuthority, upgradeAuthority, emergencyAuthority, msg.sender
-        );
-        return instance;
-    }
-
     /// @notice CREATE2 instance creation, authorized by root authority signature (EOA or EIP-1271 contract).
     /// @dev The signature binds to chainId + factory address via EIP-712 domain separator.
     function createInstanceDeterministicAuthorized(

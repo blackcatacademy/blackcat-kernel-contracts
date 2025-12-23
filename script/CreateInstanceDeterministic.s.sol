@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 import {InstanceFactory} from "../src/InstanceFactory.sol";
 import {FoundryVm} from "./FoundryVm.sol";
 
-/// @notice Create a per-install InstanceController using CREATE2 (deterministic).
+/// @notice Create a per-install InstanceController using CREATE2 (deterministic) via an authorized setup ceremony.
 /// @dev Usage:
 /// 1) Set env:
 ///    - `PRIVATE_KEY` (deployer)
@@ -15,6 +15,8 @@ import {FoundryVm} from "./FoundryVm.sol";
 ///    - `BLACKCAT_GENESIS_URI_HASH` (bytes32)
 ///    - `BLACKCAT_GENESIS_POLICY_HASH` (bytes32)
 ///    - `BLACKCAT_INSTANCE_SALT` (bytes32)
+///    - `BLACKCAT_SETUP_DEADLINE` (uint256; included in the signed digest)
+///    - `BLACKCAT_SETUP_SIGNATURE` (bytes; signature by `BLACKCAT_ROOT_AUTHORITY`, EOA `(r,s,v)`/EIP-2098 or EIP-1271 blob)
 /// 2) Run:
 ///    - `forge script script/CreateInstanceDeterministic.s.sol:CreateInstanceDeterministic --rpc-url <RPC> --broadcast`
 contract CreateInstanceDeterministic {
@@ -33,19 +35,22 @@ contract CreateInstanceDeterministic {
         bytes32 genesisPolicyHash = vm.envBytes32("BLACKCAT_GENESIS_POLICY_HASH");
 
         bytes32 salt = vm.envBytes32("BLACKCAT_INSTANCE_SALT");
+        uint256 deadline = vm.envUint("BLACKCAT_SETUP_DEADLINE");
+        bytes memory signature = vm.envBytes("BLACKCAT_SETUP_SIGNATURE");
 
         vm.startBroadcast(deployerPk);
         instance = InstanceFactory(factory)
-            .createInstanceDeterministic(
+            .createInstanceDeterministicAuthorized(
                 rootAuthority,
                 upgradeAuthority,
                 emergencyAuthority,
                 genesisRoot,
                 genesisUriHash,
                 genesisPolicyHash,
-                salt
+                salt,
+                deadline,
+                signature
             );
         vm.stopBroadcast();
     }
 }
-

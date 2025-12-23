@@ -49,27 +49,25 @@ contract InstanceFactoryTest is TestBase {
         assertEq(instance.code.length, 45, "unexpected clone code length");
     }
 
-    function test_createInstanceDeterministic_matches_predict() public {
-        bytes32 salt = keccak256("salt-1");
-        address predicted = factory.predictInstanceAddress(salt);
-        address instance = factory.createInstanceDeterministic(
-            root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt
-        );
+    function test_createInstanceDeterministicAuthorized_reverts_on_salt_reuse() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
 
-        assertEq(instance, predicted, "predicted address mismatch");
-        assertTrue(factory.isInstance(instance), "factory must mark instance");
-        assertEq(instance.code.length, 45, "unexpected clone code length");
-    }
-
-    function test_createInstanceDeterministic_reverts_on_salt_reuse() public {
         bytes32 salt = keccak256("salt-2");
-        factory.createInstanceDeterministic(
-            root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt
+        uint256 deadline = block.timestamp + 3600;
+
+        bytes32 digest = factory.hashSetupRequest(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline
+        );
+        bytes memory sig = _sign(rootPk, digest);
+
+        factory.createInstanceDeterministicAuthorized(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline, sig
         );
 
         vm.expectRevert("InstanceFactory: clone failed");
-        factory.createInstanceDeterministic(
-            root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt
+        factory.createInstanceDeterministicAuthorized(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline, sig
         );
     }
 

@@ -38,6 +38,9 @@ Revocation:
 
 Use `CreateInstanceDeterministic.s.sol` with a stable `salt` so the instance address is predictable via `predictInstanceAddress`.
 
+This script uses the **authorized** factory path (`createInstanceDeterministicAuthorized(...)`) and requires a root-signed setup
+signature (`BLACKCAT_SETUP_SIGNATURE`). This prevents third parties from pre-claiming a CREATE2 salt.
+
 Set the created controller address into your runtime config (`blackcat-config`) and treat it as a critical trust anchor.
 
 ## Upgrade flow

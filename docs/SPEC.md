@@ -240,9 +240,8 @@ v1 factory is intentionally permissionless; the important part is that the serve
 Factory behavior (v1):
 - `releaseRegistry` is configured at deployment time (immutable, can be `0x0`).
 - `createInstance(...)` creates a clone (CREATE) and initializes it.
-- `createInstanceDeterministic(..., salt)` creates a clone via CREATE2, enabling pre-computed addresses.
 - `predictInstanceAddress(salt)` returns the deterministic CREATE2 address for the factory’s current implementation.
-- `createInstanceDeterministicAuthorized(...)` is an optional “setup ceremony” path:
+- `createInstanceDeterministicAuthorized(...)` creates a clone via CREATE2 (deterministic), as an optional “setup ceremony” path:
   - requires an EIP-712 signature from `rootAuthority` (EOA or EIP-1271 contract),
   - binds the signed request to `{chainId, factory address}` via domain separator,
   - uses CREATE2 so signatures cannot be replayed into multiple instances (salt reuse fails),
