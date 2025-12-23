@@ -95,6 +95,7 @@ contract InstanceController {
     /// @notice Root-controlled attestation slots (extensibility without contract changes).
     mapping(bytes32 => bytes32) public attestations;
     mapping(bytes32 => uint64) public attestationUpdatedAt;
+    mapping(bytes32 => bool) public attestationLocked;
 
     uint64 public genesisAt;
     uint64 public lastUpgradeAt;
@@ -148,6 +149,7 @@ contract InstanceController {
     event CompatibilityStateSet(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 until);
     event CompatibilityStateCleared(bytes32 root, bytes32 uriHash, bytes32 policyHash);
     event AttestationSet(bytes32 indexed key, bytes32 previousValue, bytes32 newValue, uint64 at);
+    event AttestationLocked(bytes32 indexed key, bytes32 value, uint64 at);
     event AutoPauseOnBadCheckInChanged(bool previousValue, bool newValue);
     event EmergencyUnpausePolicyChanged(bool previousValue, bool newValue);
     event CheckIn(
@@ -605,6 +607,7 @@ contract InstanceController {
 
     function setAttestation(bytes32 key, bytes32 value) external onlyRootAuthority {
         require(key != bytes32(0), "InstanceController: key=0");
+        require(!attestationLocked[key], "InstanceController: attestation locked");
 
         bytes32 previousValue = attestations[key];
         attestations[key] = value;
@@ -616,6 +619,7 @@ contract InstanceController {
 
     function setAttestationExpected(bytes32 key, bytes32 expectedPrevious, bytes32 value) external onlyRootAuthority {
         require(key != bytes32(0), "InstanceController: key=0");
+        require(!attestationLocked[key], "InstanceController: attestation locked");
         require(attestations[key] == expectedPrevious, "InstanceController: attestation mismatch");
 
         bytes32 previousValue = attestations[key];
@@ -628,6 +632,7 @@ contract InstanceController {
 
     function clearAttestation(bytes32 key) external onlyRootAuthority {
         require(key != bytes32(0), "InstanceController: key=0");
+        require(!attestationLocked[key], "InstanceController: attestation locked");
         bytes32 previousValue = attestations[key];
         require(previousValue != bytes32(0), "InstanceController: attestation already cleared");
 
@@ -635,6 +640,34 @@ contract InstanceController {
         uint64 at = uint64(block.timestamp);
         attestationUpdatedAt[key] = at;
         emit AttestationSet(key, previousValue, bytes32(0), at);
+    }
+
+    function setAttestationAndLock(bytes32 key, bytes32 value) external onlyRootAuthority {
+        require(key != bytes32(0), "InstanceController: key=0");
+        require(value != bytes32(0), "InstanceController: value=0");
+        require(!attestationLocked[key], "InstanceController: attestation locked");
+
+        bytes32 previousValue = attestations[key];
+        attestations[key] = value;
+
+        uint64 at = uint64(block.timestamp);
+        attestationUpdatedAt[key] = at;
+        emit AttestationSet(key, previousValue, value, at);
+
+        attestationLocked[key] = true;
+        emit AttestationLocked(key, value, at);
+    }
+
+    function lockAttestationKey(bytes32 key) external onlyRootAuthority {
+        require(key != bytes32(0), "InstanceController: key=0");
+        require(!attestationLocked[key], "InstanceController: attestation locked");
+
+        bytes32 value = attestations[key];
+        require(value != bytes32(0), "InstanceController: no attestation");
+
+        uint64 at = uint64(block.timestamp);
+        attestationLocked[key] = true;
+        emit AttestationLocked(key, value, at);
     }
 
     function setAutoPauseOnBadCheckIn(bool newValue) external onlyRootAuthority {

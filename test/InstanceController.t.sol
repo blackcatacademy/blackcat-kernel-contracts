@@ -303,6 +303,49 @@ contract InstanceControllerTest is TestBase {
         controller.setAttestation(key, keccak256("v2"));
     }
 
+    function test_attestation_lock_prevents_changes_and_clearing() public {
+        bytes32 key = keccak256("config.runtime.v1");
+
+        vm.prank(root);
+        controller.setAttestation(key, keccak256("v1"));
+
+        vm.prank(root);
+        controller.lockAttestationKey(key);
+        assertTrue(controller.attestationLocked(key), "attestation should be locked");
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: attestation locked");
+        controller.setAttestation(key, keccak256("v2"));
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: attestation locked");
+        controller.clearAttestation(key);
+    }
+
+    function test_lockAttestationKey_rejects_when_empty() public {
+        bytes32 key = keccak256("config.runtime.v1");
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: no attestation");
+        controller.lockAttestationKey(key);
+    }
+
+    function test_setAttestationAndLock_sets_and_locks() public {
+        bytes32 key = keccak256("config.runtime.v1");
+        bytes32 value = keccak256("v1");
+
+        vm.prank(root);
+        controller.setAttestationAndLock(key, value);
+
+        assertEq(controller.attestations(key), value, "attestation value mismatch");
+        assertTrue(controller.attestationLocked(key), "attestation should be locked");
+        assertTrue(controller.attestationUpdatedAt(key) != 0, "updatedAt should be set");
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: attestation locked");
+        controller.setAttestationExpected(key, value, keccak256("v2"));
+    }
+
     function test_setAttestationExpected_rejects_mismatch() public {
         bytes32 key = keccak256("config.runtime.v1");
 

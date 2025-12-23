@@ -108,6 +108,9 @@ Example (recommended):
 - `value = sha256(canonical_runtime_config_bytes)`
 
 Use `SetAttestation.s.sol` for a basic EOA flow (production should use Safe).
+Write-once option (recommended for long-term trust anchors):
+- Set + lock in one tx: `SetAttestationAndLock.s.sol`
+- Lock an existing key: `LockAttestationKey.s.sol`
 Clear an attestation:
 - `ClearAttestation.s.sol`
 

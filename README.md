@@ -69,6 +69,7 @@ Scripts live in `blackcat-kernel-contracts/script/` and intentionally avoid exte
   - `blackcat-kernel-contracts/script/CheckIn.s.sol`
   - `blackcat-kernel-contracts/script/ReportIncident.s.sol`
   - `blackcat-kernel-contracts/script/SetAttestation.s.sol`, `blackcat-kernel-contracts/script/ClearAttestation.s.sol`
+  - Attestation write-once: `blackcat-kernel-contracts/script/SetAttestationAndLock.s.sol`, `blackcat-kernel-contracts/script/LockAttestationKey.s.sol`
   - `blackcat-kernel-contracts/script/SetCompatibilityWindow.s.sol`, `blackcat-kernel-contracts/script/ClearCompatibilityState.s.sol`
   - `blackcat-kernel-contracts/script/SetMinUpgradeDelay.s.sol`
   - `blackcat-kernel-contracts/script/LockMinUpgradeDelay.s.sol`

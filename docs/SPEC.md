@@ -117,6 +117,7 @@ State:
 - Optional attestation slots (extensibility without contract changes):
   - `attestations[key] = value` (root authority)
   - `attestationUpdatedAt[key] = unix seconds`
+  - `attestationLocked[key] = bool` (when true, that key becomes write-once)
 - `rootAuthority`, `upgradeAuthority`, `emergencyAuthority`
 - Optional `releaseRegistry` (if set, upgrades must reference trusted roots)
 - Optional `releaseRegistryLocked` (if true, registry pointer is immutable)
