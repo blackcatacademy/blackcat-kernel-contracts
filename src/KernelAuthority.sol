@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 /// @notice Minimal EIP-712 threshold signer authority (multi-device by design).
 /// @dev Skeleton contract (not audited, not production-ready).
 contract KernelAuthority {
+    bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
+
     bytes32 private constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant NAME_HASH = keccak256(bytes("BlackCatKernelAuthority"));
@@ -70,6 +72,28 @@ contract KernelAuthority {
 
         emit Executed(target, value, keccak256(data), nonce_, msg.sender);
         return ret;
+    }
+
+    /// @notice EIP-1271 signature validator for tooling that expects contract-based signing.
+    /// @dev Encoding: `signature` is ABI-encoded `bytes[]` with signer signatures (65 bytes each) in ascending address order.
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
+        bytes[] memory sigs = abi.decode(signature, (bytes[]));
+
+        uint256 required = threshold;
+        if (sigs.length < required) {
+            return bytes4(0);
+        }
+
+        address last = address(0);
+        for (uint256 i = 0; i < required; i++) {
+            address signer = _recover(hash, sigs[i]);
+            if (!isSigner[signer] || signer <= last) {
+                return bytes4(0);
+            }
+            last = signer;
+        }
+
+        return EIP1271_MAGICVALUE;
     }
 
     function setConfig(address[] calldata newSigners, uint256 newThreshold) external {
@@ -143,4 +167,3 @@ contract KernelAuthority {
         }
     }
 }
-

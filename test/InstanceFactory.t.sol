@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 import {TestBase} from "./TestBase.sol";
 import {InstanceController} from "../src/InstanceController.sol";
 import {InstanceFactory} from "../src/InstanceFactory.sol";
+import {KernelAuthority} from "../src/KernelAuthority.sol";
 
 contract InstanceFactoryTest is TestBase {
     InstanceFactory private factory;
@@ -67,8 +68,115 @@ contract InstanceFactoryTest is TestBase {
         factory.createInstanceDeterministic(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt);
     }
 
+    function test_createInstanceDeterministicAuthorized_accepts_eoa_root_signature() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+        bytes32 salt = keccak256("salt-auth-1");
+        uint256 deadline = block.timestamp + 3600;
+
+        bytes32 digest = factory.hashSetupRequest(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        address instance = factory.createInstanceDeterministicAuthorized(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline, sig
+        );
+
+        assertEq(instance, factory.predictInstanceAddress(salt), "predicted address mismatch");
+        assertTrue(factory.isInstance(instance), "factory must mark instance");
+        assertEq(instance.code.length, 45, "unexpected clone code length");
+    }
+
+    function test_createInstanceDeterministicAuthorized_accepts_kernelAuthority_root_signature() public {
+        uint256 pk1 = 0xA11CE;
+        uint256 pk2 = 0xB0B;
+        address a1 = vm.addr(pk1);
+        address a2 = vm.addr(pk2);
+
+        address[] memory signers = new address[](2);
+        if (a1 < a2) {
+            signers[0] = a1;
+            signers[1] = a2;
+        } else {
+            signers[0] = a2;
+            signers[1] = a1;
+        }
+
+        KernelAuthority rootAuth = new KernelAuthority(signers, 2);
+
+        bytes32 salt = keccak256("salt-auth-2");
+        uint256 deadline = block.timestamp + 3600;
+
+        bytes32 digest = factory.hashSetupRequest(
+            address(rootAuth), upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline
+        );
+
+        bytes[] memory sigs = new bytes[](2);
+        if (a1 < a2) {
+            sigs[0] = _sign(pk1, digest);
+            sigs[1] = _sign(pk2, digest);
+        } else {
+            sigs[0] = _sign(pk2, digest);
+            sigs[1] = _sign(pk1, digest);
+        }
+
+        bytes memory packed = abi.encode(sigs);
+
+        address instance = factory.createInstanceDeterministicAuthorized(
+            address(rootAuth), upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline, packed
+        );
+
+        assertEq(instance, factory.predictInstanceAddress(salt), "predicted address mismatch");
+        assertTrue(factory.isInstance(instance), "factory must mark instance");
+    }
+
+    function test_createInstanceDeterministicAuthorized_rejects_expired() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+        bytes32 salt = keccak256("salt-auth-expired");
+        uint256 deadline = block.timestamp + 1;
+
+        bytes32 digest = factory.hashSetupRequest(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        vm.warp(deadline + 1);
+
+        vm.expectRevert("InstanceFactory: expired");
+        factory.createInstanceDeterministicAuthorized(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline, sig
+        );
+    }
+
+    function test_createInstanceDeterministicAuthorized_rejects_wrong_signature() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+        bytes32 salt = keccak256("salt-auth-wrong-sig");
+        uint256 deadline = block.timestamp + 3600;
+
+        bytes32 digest = factory.hashSetupRequest(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        vm.expectRevert("InstanceFactory: invalid root signature");
+        factory.createInstanceDeterministicAuthorized(
+            root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline, sig
+        );
+    }
+
     function test_createInstance_reverts_on_invalid_args() public {
         vm.expectRevert("InstanceController: root=0");
         factory.createInstance(address(0), upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash);
+    }
+
+    function _sign(uint256 pk, bytes32 digest) private returns (bytes memory) {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
+        return abi.encodePacked(r, s, v);
     }
 }

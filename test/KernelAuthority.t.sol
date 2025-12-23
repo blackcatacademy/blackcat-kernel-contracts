@@ -138,11 +138,42 @@ contract KernelAuthorityTest is TestBase {
         assertTrue(!authority.isSigner(s2.addr), "signer2 should be removed");
     }
 
+    function test_isValidSignature_accepts_packed_bytes_array() public {
+        bytes32 digest = keccak256("digest");
+
+        bytes[] memory sigs = new bytes[](2);
+        sigs[0] = _signDigest(s1, digest);
+        sigs[1] = _signDigest(s2, digest);
+
+        bytes memory packed = abi.encode(sigs);
+        assertEq(authority.isValidSignature(digest, packed), bytes4(0x1626ba7e), "should be valid");
+    }
+
+    function test_isValidSignature_rejects_insufficient_or_unsorted() public {
+        bytes32 digest = keccak256("digest");
+
+        bytes[] memory sigs1 = new bytes[](1);
+        sigs1[0] = _signDigest(s1, digest);
+        bytes memory packed1 = abi.encode(sigs1);
+        assertEq(authority.isValidSignature(digest, packed1), bytes4(0), "should be invalid");
+
+        bytes[] memory sigs2 = new bytes[](2);
+        sigs2[0] = _signDigest(s2, digest);
+        sigs2[1] = _signDigest(s1, digest);
+        bytes memory packed2 = abi.encode(sigs2);
+        assertEq(authority.isValidSignature(digest, packed2), bytes4(0), "should be invalid");
+    }
+
     function _signExecute(Signer memory signer, address target, uint256 value, bytes memory data, uint256 nonce_, uint256 deadline)
         private
         returns (bytes memory)
     {
         bytes32 digest = authority.hashExecute(target, value, data, nonce_, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signer.pk, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _signDigest(Signer memory signer, bytes32 digest) private returns (bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signer.pk, digest);
         return abi.encodePacked(r, s, v);
     }
@@ -154,4 +185,3 @@ contract KernelAuthorityTest is TestBase {
         return (b, a);
     }
 }
-

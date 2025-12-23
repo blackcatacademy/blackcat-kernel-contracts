@@ -135,6 +135,11 @@ Factory behavior (v1):
 - `createInstance(...)` creates a clone (CREATE) and initializes it.
 - `createInstanceDeterministic(..., salt)` creates a clone via CREATE2, enabling pre-computed addresses.
 - `predictInstanceAddress(salt)` returns the deterministic CREATE2 address for the factory’s current implementation.
+- `createInstanceDeterministicAuthorized(...)` is an optional “setup ceremony” path:
+  - requires an EIP-712 signature from `rootAuthority` (EOA or EIP-1271 contract),
+  - binds the signed request to `{chainId, factory address}` via domain separator,
+  - uses CREATE2 so signatures cannot be replayed into multiple instances (salt reuse fails),
+  - is intended for multi-device bootstrap when `rootAuthority` is Safe (EIP-1271) or `KernelAuthority` (EIP-1271).
 
 ## Runtime policy (off-chain)
 

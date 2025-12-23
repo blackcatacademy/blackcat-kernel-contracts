@@ -38,6 +38,9 @@ Flow:
    - `KernelAuthority` verifies signatures + nonce + deadline,
    - then `KernelAuthority` calls the target contract (e.g., `InstanceController`).
 
+Additionally, `KernelAuthority` implements **EIP-1271** (`isValidSignature`) so it can be used as a signature-validating authority
+for bootstrap flows (e.g. factory setup authorization) without needing to execute the action itself.
+
 Properties:
 - Multi-device is enforced by the contract itself.
 - No Safe dependency.
@@ -77,4 +80,3 @@ Additionally:
 3. Whether `minUpgradeDelaySec` is non-zero (timelock).
 4. Whether `releaseRegistry` is configured and used for root trust enforcement.
 5. Whether `autoPauseOnBadCheckIn` is enabled and how reporter integrity is ensured.
-

@@ -5,6 +5,17 @@ import {InstanceController} from "./InstanceController.sol";
 /// @notice Creates per-install InstanceController contracts.
 /// @dev Skeleton factory (not audited, not production-ready). Uses EIP-1167 minimal proxy clones for efficiency.
 contract InstanceFactory {
+    bytes32 private constant DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 private constant NAME_HASH = keccak256(bytes("BlackCatInstanceFactory"));
+    bytes32 private constant VERSION_HASH = keccak256(bytes("1"));
+
+    bytes32 private constant SETUP_TYPEHASH = keccak256(
+        "SetupRequest(address rootAuthority,address upgradeAuthority,address emergencyAuthority,bytes32 genesisRoot,bytes32 genesisUriHash,bytes32 genesisPolicyHash,bytes32 salt,uint256 deadline)"
+    );
+
+    bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
+
     address public immutable implementation;
     address public immutable releaseRegistry;
     mapping(address => bool) public isInstance;
@@ -31,6 +42,36 @@ contract InstanceFactory {
         }
         implementation = address(new InstanceController());
         releaseRegistry = releaseRegistry_;
+    }
+
+    function domainSeparator() public view returns (bytes32) {
+        return keccak256(abi.encode(DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
+    }
+
+    function hashSetupRequest(
+        address rootAuthority,
+        address upgradeAuthority,
+        address emergencyAuthority,
+        bytes32 genesisRoot,
+        bytes32 genesisUriHash,
+        bytes32 genesisPolicyHash,
+        bytes32 salt,
+        uint256 deadline
+    ) public view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                SETUP_TYPEHASH,
+                rootAuthority,
+                upgradeAuthority,
+                emergencyAuthority,
+                genesisRoot,
+                genesisUriHash,
+                genesisPolicyHash,
+                salt,
+                deadline
+            )
+        );
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
     }
 
     function createInstance(
@@ -66,6 +107,54 @@ contract InstanceFactory {
         bytes32 genesisPolicyHash,
         bytes32 salt
     ) external returns (address) {
+        address instance = _cloneDeterministic(implementation, salt);
+        InstanceController(instance).initialize(
+            rootAuthority,
+            upgradeAuthority,
+            emergencyAuthority,
+            releaseRegistry,
+            genesisRoot,
+            genesisUriHash,
+            genesisPolicyHash
+        );
+
+        isInstance[instance] = true;
+        emit InstanceCreatedDeterministic(
+            instance, salt, rootAuthority, upgradeAuthority, emergencyAuthority, msg.sender
+        );
+        return instance;
+    }
+
+    /// @notice CREATE2 instance creation, authorized by root authority signature (EOA or EIP-1271 contract).
+    /// @dev The signature binds to chainId + factory address via EIP-712 domain separator.
+    function createInstanceDeterministicAuthorized(
+        address rootAuthority,
+        address upgradeAuthority,
+        address emergencyAuthority,
+        bytes32 genesisRoot,
+        bytes32 genesisUriHash,
+        bytes32 genesisPolicyHash,
+        bytes32 salt,
+        uint256 deadline,
+        bytes calldata rootAuthoritySignature
+    ) external returns (address) {
+        require(block.timestamp <= deadline, "InstanceFactory: expired");
+
+        bytes32 digest = hashSetupRequest(
+            rootAuthority,
+            upgradeAuthority,
+            emergencyAuthority,
+            genesisRoot,
+            genesisUriHash,
+            genesisPolicyHash,
+            salt,
+            deadline
+        );
+        require(
+            _isValidSignatureNow(rootAuthority, digest, rootAuthoritySignature),
+            "InstanceFactory: invalid root signature"
+        );
+
         address instance = _cloneDeterministic(implementation, salt);
         InstanceController(instance).initialize(
             rootAuthority,
@@ -120,5 +209,42 @@ contract InstanceFactory {
             instance := create2(0, ptr, 0x37, salt)
         }
         require(instance != address(0), "InstanceFactory: clone failed");
+    }
+
+    function _isValidSignatureNow(address signer, bytes32 digest, bytes memory signature)
+        private
+        view
+        returns (bool)
+    {
+        if (signer.code.length == 0) {
+            return _recover(digest, signature) == signer;
+        }
+
+        (bool ok, bytes memory ret) = signer.staticcall(
+            abi.encodeWithSignature("isValidSignature(bytes32,bytes)", digest, signature)
+        );
+        return ok && ret.length == 32 && bytes4(ret) == EIP1271_MAGICVALUE;
+    }
+
+    function _recover(bytes32 digest, bytes memory signature) private pure returns (address) {
+        require(signature.length == 65, "InstanceFactory: bad signature length");
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := mload(add(signature, 0x20))
+            s := mload(add(signature, 0x40))
+            v := byte(0, mload(add(signature, 0x60)))
+        }
+
+        if (v < 27) {
+            v += 27;
+        }
+        require(v == 27 || v == 28, "InstanceFactory: bad v");
+
+        address recovered = ecrecover(digest, v, r, s);
+        require(recovered != address(0), "InstanceFactory: bad signature");
+        return recovered;
     }
 }
