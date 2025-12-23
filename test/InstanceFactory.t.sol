@@ -30,6 +30,7 @@ contract InstanceFactoryTest is TestBase {
             factory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash);
         assertTrue(instance != address(0), "instance is zero");
         assertTrue(instance != factory.implementation(), "instance must not equal implementation");
+        assertTrue(factory.isInstance(instance), "factory must mark instance");
 
         InstanceController c = InstanceController(instance);
         assertEq(c.rootAuthority(), root, "rootAuthority mismatch");
@@ -46,4 +47,3 @@ contract InstanceFactoryTest is TestBase {
         factory.createInstance(address(0), upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash);
     }
 }
-

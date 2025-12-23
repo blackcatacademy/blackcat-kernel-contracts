@@ -48,6 +48,13 @@ contract ReleaseRegistryTest is TestBase {
 
         vm.prank(owner);
         registry.transferOwnership(other);
+
+        vm.prank(owner);
+        vm.expectRevert("ReleaseRegistry: not pending owner");
+        registry.acceptOwnership();
+
+        vm.prank(other);
+        registry.acceptOwnership();
         assertEq(registry.owner(), other, "owner not transferred");
     }
 
@@ -65,5 +72,20 @@ contract ReleaseRegistryTest is TestBase {
         vm.prank(owner);
         vm.expectRevert("ReleaseRegistry: root=0");
         registry.publish(keccak256("c"), 1, bytes32(0), 0, 0);
+    }
+
+    function test_publish_is_immutable_per_component_version() public {
+        ReleaseRegistry registry = new ReleaseRegistry(owner);
+
+        bytes32 component = keccak256("blackcat-core");
+        uint64 version = 1;
+        bytes32 root = keccak256("root");
+
+        vm.prank(owner);
+        registry.publish(component, version, root, 0, 0);
+
+        vm.prank(owner);
+        vm.expectRevert("ReleaseRegistry: already published");
+        registry.publish(component, version, keccak256("root2"), 0, 0);
     }
 }

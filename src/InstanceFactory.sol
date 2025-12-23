@@ -6,12 +6,14 @@ import {InstanceController} from "./InstanceController.sol";
 /// @dev Skeleton factory (not audited, not production-ready). Uses EIP-1167 minimal proxy clones for efficiency.
 contract InstanceFactory {
     address public immutable implementation;
+    mapping(address => bool) public isInstance;
 
     event InstanceCreated(
         address indexed instance,
         address indexed rootAuthority,
         address indexed upgradeAuthority,
-        address emergencyAuthority
+        address emergencyAuthority,
+        address createdBy
     );
 
     constructor() {
@@ -32,7 +34,8 @@ contract InstanceFactory {
                 rootAuthority, upgradeAuthority, emergencyAuthority, genesisRoot, genesisUriHash, genesisPolicyHash
             );
 
-        emit InstanceCreated(instance, rootAuthority, upgradeAuthority, emergencyAuthority);
+        isInstance[instance] = true;
+        emit InstanceCreated(instance, rootAuthority, upgradeAuthority, emergencyAuthority, msg.sender);
         return instance;
     }
 

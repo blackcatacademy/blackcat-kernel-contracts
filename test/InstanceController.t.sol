@@ -84,7 +84,7 @@ contract InstanceControllerTest is TestBase {
         assertTrue(createdAt != 0, "createdAt should be set");
         assertEq(uint256(ttlSec), 3600, "ttl mismatch");
 
-        vm.prank(upgrader);
+        vm.prank(root);
         controller.activateUpgrade();
 
         assertEq(controller.activeRoot(), nextRoot, "active root not updated");
@@ -105,7 +105,7 @@ contract InstanceControllerTest is TestBase {
         (,,, uint64 createdAt, uint64 ttlSec) = controller.pendingUpgrade();
         vm.warp(uint256(createdAt) + uint256(ttlSec) + 1);
 
-        vm.prank(upgrader);
+        vm.prank(root);
         vm.expectRevert("InstanceController: upgrade expired");
         controller.activateUpgrade();
     }

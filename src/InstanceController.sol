@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 /// @notice Per-install trust authority for a single BlackCat deployment.
 /// @dev Skeleton contract (not audited, not production-ready).
 contract InstanceController {
+    uint8 public constant VERSION = 1;
+
     struct UpgradeProposal {
         bytes32 root;
         bytes32 uriHash;
@@ -10,6 +12,9 @@ contract InstanceController {
         uint64 createdAt;
         uint64 ttlSec;
     }
+
+    /// @notice Factory or caller that initialized this instance (provenance hint).
+    address public factory;
 
     address public rootAuthority;
     address public upgradeAuthority;
@@ -23,13 +28,20 @@ contract InstanceController {
 
     UpgradeProposal public pendingUpgrade;
 
+    uint64 public genesisAt;
+    uint64 public lastUpgradeAt;
+
     event Initialized(
-        address indexed rootAuthority, address indexed upgradeAuthority, address indexed emergencyAuthority
+        address indexed factory,
+        address indexed rootAuthority,
+        address indexed upgradeAuthority,
+        address emergencyAuthority
     );
     event Paused(address indexed by);
     event Unpaused(address indexed by);
     event UpgradeProposed(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint64 ttlSec);
-    event UpgradeActivated(bytes32 root, bytes32 uriHash, bytes32 policyHash);
+    event UpgradeCanceled(address indexed by);
+    event UpgradeActivated(bytes32 previousRoot, bytes32 root, bytes32 uriHash, bytes32 policyHash);
     event RootAuthorityChanged(address indexed previousValue, address indexed newValue);
     event UpgradeAuthorityChanged(address indexed previousValue, address indexed newValue);
     event EmergencyAuthorityChanged(address indexed previousValue, address indexed newValue);
@@ -46,6 +58,14 @@ contract InstanceController {
 
     modifier onlyEmergencyAuthority() {
         require(msg.sender == emergencyAuthority, "InstanceController: not emergency authority");
+        _;
+    }
+
+    modifier onlyRootOrUpgradeAuthority() {
+        require(
+            msg.sender == rootAuthority || msg.sender == upgradeAuthority,
+            "InstanceController: not root/upgrade authority"
+        );
         _;
     }
 
@@ -69,16 +89,20 @@ contract InstanceController {
         require(emergencyAuthority_ != address(0), "InstanceController: emergency=0");
         require(genesisRoot != bytes32(0), "InstanceController: genesisRoot=0");
 
+        factory = msg.sender;
         rootAuthority = rootAuthority_;
         upgradeAuthority = upgradeAuthority_;
         emergencyAuthority = emergencyAuthority_;
+
+        genesisAt = uint64(block.timestamp);
+        lastUpgradeAt = genesisAt;
 
         activeRoot = genesisRoot;
         activeUriHash = genesisUriHash;
         activePolicyHash = genesisPolicyHash;
 
-        emit Initialized(rootAuthority_, upgradeAuthority_, emergencyAuthority_);
-        emit UpgradeActivated(genesisRoot, genesisUriHash, genesisPolicyHash);
+        emit Initialized(factory, rootAuthority_, upgradeAuthority_, emergencyAuthority_);
+        emit UpgradeActivated(bytes32(0), genesisRoot, genesisUriHash, genesisPolicyHash);
     }
 
     function pause() external onlyEmergencyAuthority {
@@ -130,7 +154,14 @@ contract InstanceController {
         emit UpgradeProposed(root, uriHash, policyHash, ttlSec);
     }
 
-    function activateUpgrade() external onlyUpgradeAuthority {
+    function cancelUpgrade() external onlyRootOrUpgradeAuthority {
+        UpgradeProposal memory upgrade = pendingUpgrade;
+        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
+        delete pendingUpgrade;
+        emit UpgradeCanceled(msg.sender);
+    }
+
+    function activateUpgrade() external onlyRootAuthority {
         UpgradeProposal memory upgrade = pendingUpgrade;
         require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
         require(
@@ -138,12 +169,50 @@ contract InstanceController {
             "InstanceController: upgrade expired"
         );
 
+        bytes32 previousRoot = activeRoot;
         activeRoot = upgrade.root;
         activeUriHash = upgrade.uriHash;
         activePolicyHash = upgrade.policyHash;
 
         delete pendingUpgrade;
 
-        emit UpgradeActivated(activeRoot, activeUriHash, activePolicyHash);
+        lastUpgradeAt = uint64(block.timestamp);
+
+        emit UpgradeActivated(previousRoot, activeRoot, activeUriHash, activePolicyHash);
+    }
+
+    function snapshot()
+        external
+        view
+        returns (
+            uint8 version,
+            bool paused_,
+            bytes32 activeRoot_,
+            bytes32 activeUriHash_,
+            bytes32 activePolicyHash_,
+            bytes32 pendingRoot_,
+            bytes32 pendingUriHash_,
+            bytes32 pendingPolicyHash_,
+            uint64 pendingCreatedAt_,
+            uint64 pendingTtlSec_,
+            uint64 genesisAt_,
+            uint64 lastUpgradeAt_
+        )
+    {
+        UpgradeProposal memory p = pendingUpgrade;
+        return (
+            VERSION,
+            paused,
+            activeRoot,
+            activeUriHash,
+            activePolicyHash,
+            p.root,
+            p.uriHash,
+            p.policyHash,
+            p.createdAt,
+            p.ttlSec,
+            genesisAt,
+            lastUpgradeAt
+        );
     }
 }

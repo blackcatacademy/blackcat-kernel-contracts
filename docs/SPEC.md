@@ -74,6 +74,8 @@ Core mapping:
 Notes:
 - Version encoding must be stable. v1 uses `uint64` (implementation detail; may evolve).
 - Publishing is gated (owner now; later: governance authority / Safe).
+- Releases are immutable per `(componentId, version)` (republishing is rejected; publish a new version instead).
+- Ownership uses a 2-step transfer (`transferOwnership` → `acceptOwnership`) to reduce operator mistakes.
 
 ### `InstanceController` (per install)
 
@@ -87,10 +89,13 @@ State:
 
 Upgrade flow (v1):
 1. `proposeUpgrade(root, uriHash, policyHash, ttlSec)` (upgrade authority)
-2. `activateUpgrade()` (upgrade authority, within TTL)
+2. `activateUpgrade()` (root authority, within TTL)
 
 Emergency flow:
 - `pause()` / `unpause()` (emergency authority)
+
+Runtime optimization (v1):
+- `snapshot()` aggregates the commonly-read state (paused + active hashes + pending proposal) into one `eth_call`.
 
 ### `InstanceFactory`
 
