@@ -106,6 +106,9 @@ Upgrade flow (v1):
 1. `proposeUpgrade(root, uriHash, policyHash, ttlSec)` (upgrade authority)
 2. Optional: `cancelUpgrade()` (root authority or upgrade authority)
 3. `activateUpgrade()` (root authority, within TTL and after timelock, if configured)
+4. Optional safety helpers (same auth as above):
+   - `cancelUpgradeExpected(...)` to avoid cancelling the wrong pending proposal.
+   - `activateUpgradeExpected(...)` to avoid activating an unexpected pending proposal.
 
 If `releaseRegistry` is set:
 - `initialize(...)` requires the genesis `root` to be trusted in the registry.
@@ -123,6 +126,7 @@ Monitoring / check-ins (v1):
 
 Runtime optimization (v1):
 - `snapshot()` aggregates the commonly-read state (paused + active hashes + pending proposal) into one `eth_call`.
+- `snapshotV2()` returns operational/health metadata (check-in + incidents + registry pointers) in one call without changing the `snapshot()` ABI (backwards compatible).
 
 ### `InstanceFactory`
 

@@ -92,6 +92,58 @@ contract KernelAuthorityTest is TestBase {
         assertEq(authority.nonce(), nonceBefore + 1, "nonce not incremented");
     }
 
+    function test_executeBatch_runs_multiple_calls() public {
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory data = new bytes[](2);
+
+        targets[0] = address(counter);
+        targets[1] = address(counter);
+        values[0] = 0;
+        values[1] = 0;
+        data[0] = abi.encodeWithSignature("inc()");
+        data[1] = abi.encodeWithSignature("inc()");
+
+        uint256 deadline = block.timestamp + 3600;
+        uint256 nonceBefore = authority.nonce();
+
+        bytes32 digest = authority.hashExecuteBatch(targets, values, data, nonceBefore, deadline);
+
+        bytes[] memory sigs = new bytes[](2);
+        sigs[0] = _signDigest(s1, digest);
+        sigs[1] = _signDigest(s2, digest);
+
+        authority.executeBatch(targets, values, data, deadline, sigs);
+
+        assertEq(counter.n(), 2, "counter did not increment twice");
+        assertEq(authority.nonce(), nonceBefore + 1, "nonce not incremented");
+    }
+
+    function test_executeBatch_bubbles_revert_reason() public {
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory data = new bytes[](2);
+
+        targets[0] = address(counter);
+        targets[1] = address(counter);
+        values[0] = 0;
+        values[1] = 0;
+        data[0] = abi.encodeWithSignature("inc()");
+        data[1] = abi.encodeWithSignature("fail()");
+
+        uint256 deadline = block.timestamp + 3600;
+        uint256 nonceBefore = authority.nonce();
+
+        bytes32 digest = authority.hashExecuteBatch(targets, values, data, nonceBefore, deadline);
+
+        bytes[] memory sigs = new bytes[](2);
+        sigs[0] = _signDigest(s1, digest);
+        sigs[1] = _signDigest(s2, digest);
+
+        vm.expectRevert("fail");
+        authority.executeBatch(targets, values, data, deadline, sigs);
+    }
+
     function test_execute_rejects_expired_deadline() public {
         bytes memory data = abi.encodeWithSignature("inc()");
         uint256 deadline = block.timestamp + 1;

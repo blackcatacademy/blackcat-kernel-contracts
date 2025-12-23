@@ -387,9 +387,34 @@ contract InstanceController {
         emit UpgradeCanceled(msg.sender);
     }
 
-    function activateUpgrade() external onlyRootAuthority {
-        require(!paused, "InstanceController: paused");
+    function cancelUpgradeExpected(bytes32 root, bytes32 uriHash, bytes32 policyHash) external onlyRootOrUpgradeAuthority {
         UpgradeProposal memory upgrade = pendingUpgrade;
+        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
+        require(
+            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
+            "InstanceController: pending mismatch"
+        );
+        delete pendingUpgrade;
+        emit UpgradeCanceled(msg.sender);
+    }
+
+    function activateUpgrade() external onlyRootAuthority {
+        UpgradeProposal memory upgrade = pendingUpgrade;
+        _activateUpgrade(upgrade);
+    }
+
+    function activateUpgradeExpected(bytes32 root, bytes32 uriHash, bytes32 policyHash) external onlyRootAuthority {
+        UpgradeProposal memory upgrade = pendingUpgrade;
+        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
+        require(
+            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
+            "InstanceController: pending mismatch"
+        );
+        _activateUpgrade(upgrade);
+    }
+
+    function _activateUpgrade(UpgradeProposal memory upgrade) private {
+        require(!paused, "InstanceController: paused");
         require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
         require(
             block.timestamp >= uint256(upgrade.createdAt) + uint256(minUpgradeDelaySec),
@@ -460,6 +485,38 @@ contract InstanceController {
             p.ttlSec,
             genesisAt,
             lastUpgradeAt
+        );
+    }
+
+    /// @notice Operational snapshot to reduce `eth_call` count for monitoring/diagnostics.
+    /// @dev `snapshot()` remains stable for runtime enforcement; this function is additive.
+    function snapshotV2()
+        external
+        view
+        returns (
+            bool autoPauseOnBadCheckIn_,
+            address releaseRegistry_,
+            address reporterAuthority_,
+            uint64 minUpgradeDelaySec_,
+            uint64 lastCheckInAt_,
+            bool lastCheckInOk_,
+            uint64 incidentCount_,
+            uint64 lastIncidentAt_,
+            bytes32 lastIncidentHash_,
+            address lastIncidentBy_
+        )
+    {
+        return (
+            autoPauseOnBadCheckIn,
+            releaseRegistry,
+            reporterAuthority,
+            minUpgradeDelaySec,
+            lastCheckInAt,
+            lastCheckInOk,
+            incidentCount,
+            lastIncidentAt,
+            lastIncidentHash,
+            lastIncidentBy
         );
     }
 }

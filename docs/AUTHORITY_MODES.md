@@ -41,6 +41,8 @@ Flow:
 Additionally, `KernelAuthority` implements **EIP-1271** (`isValidSignature`) so it can be used as a signature-validating authority
 for bootstrap flows (e.g. factory setup authorization) without needing to execute the action itself.
 
+For operational convenience, `KernelAuthority` also supports `executeBatch(...)` (single threshold approval for multiple calls).
+
 Properties:
 - Multi-device is enforced by the contract itself.
 - No Safe dependency.

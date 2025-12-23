@@ -117,6 +117,55 @@ contract InstanceControllerTest is TestBase {
         assertEq(clearedRoot, bytes32(0), "pending upgrade not cleared");
     }
 
+    function test_activateUpgradeExpected_rejects_mismatch() public {
+        bytes32 nextRoot = keccak256("next-root-expected");
+        bytes32 nextUriHash = keccak256("next-uri-expected");
+        bytes32 nextPolicyHash = keccak256("next-policy-expected");
+
+        vm.prank(upgrader);
+        controller.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: pending mismatch");
+        controller.activateUpgradeExpected(nextRoot, nextUriHash, keccak256("wrong"));
+    }
+
+    function test_cancelUpgradeExpected_rejects_mismatch() public {
+        bytes32 nextRoot = keccak256("next-root-cancel");
+        bytes32 nextUriHash = keccak256("next-uri-cancel");
+        bytes32 nextPolicyHash = keccak256("next-policy-cancel");
+
+        vm.prank(upgrader);
+        controller.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.prank(root);
+        vm.expectRevert("InstanceController: pending mismatch");
+        controller.cancelUpgradeExpected(nextRoot, keccak256("wrong"), nextPolicyHash);
+    }
+
+    function test_snapshotV2_includes_incident_and_flags() public {
+        address reporter = address(0x7777777777777777777777777777777777777777);
+
+        vm.prank(root);
+        controller.startReporterAuthorityTransfer(reporter);
+
+        vm.prank(reporter);
+        controller.acceptReporterAuthority();
+
+        vm.prank(root);
+        controller.setAutoPauseOnBadCheckIn(true);
+
+        vm.prank(reporter);
+        controller.checkIn(keccak256("wrong-root"), genesisUriHash, genesisPolicyHash);
+
+        (bool autoPause, , , , , , uint64 incidentCount_, , , ) = controller.snapshotV2();
+        bool paused_ = controller.paused();
+
+        assertTrue(paused_, "paused should be true");
+        assertTrue(autoPause, "autoPauseOnBadCheckIn should be true");
+        assertEq(uint256(incidentCount_), 1, "incidentCount mismatch");
+    }
+
     function test_activate_upgrade_reverts_when_expired() public {
         bytes32 nextRoot = keccak256("next-root-expire");
 

@@ -13,6 +13,9 @@ contract KernelAuthority {
     bytes32 private constant EXECUTE_TYPEHASH =
         keccak256("Execute(address target,uint256 value,bytes32 dataHash,uint256 nonce,uint256 deadline)");
 
+    bytes32 private constant EXECUTE_BATCH_TYPEHASH =
+        keccak256("ExecuteBatch(bytes32 targetsHash,bytes32 valuesHash,bytes32 dataHashesHash,uint256 nonce,uint256 deadline)");
+
     uint256 private constant SECP256K1N_HALF =
         0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
 
@@ -23,6 +26,7 @@ contract KernelAuthority {
     uint256 public nonce;
 
     event Executed(address indexed target, uint256 value, bytes32 dataHash, uint256 nonce, address indexed executor);
+    event BatchExecuted(uint256 count, bytes32 callsHash, uint256 nonce, address indexed executor);
     event ConfigChanged(uint256 threshold, address[] signers);
 
     constructor(address[] memory signers_, uint256 threshold_) {
@@ -50,6 +54,26 @@ contract KernelAuthority {
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
     }
 
+    function hashExecuteBatch(
+        address[] calldata targets,
+        uint256[] calldata values,
+        bytes[] calldata data,
+        uint256 nonce_,
+        uint256 deadline
+    ) external view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                EXECUTE_BATCH_TYPEHASH,
+                keccak256(abi.encode(targets)),
+                keccak256(abi.encode(values)),
+                _hashDataHashes(data),
+                nonce_,
+                deadline
+            )
+        );
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
+    }
+
     function execute(address target, uint256 value, bytes calldata data, uint256 deadline, bytes[] calldata signatures)
         external
         returns (bytes memory)
@@ -72,6 +96,46 @@ contract KernelAuthority {
 
         emit Executed(target, value, keccak256(data), nonce_, msg.sender);
         return ret;
+    }
+
+    function executeBatch(
+        address[] calldata targets,
+        uint256[] calldata values,
+        bytes[] calldata data,
+        uint256 deadline,
+        bytes[] calldata signatures
+    ) external {
+        require(block.timestamp <= deadline, "KernelAuthority: expired");
+
+        uint256 count = targets.length;
+        require(count != 0, "KernelAuthority: empty batch");
+        require(values.length == count && data.length == count, "KernelAuthority: length mismatch");
+
+        uint256 nonce_ = nonce;
+        {
+            bytes32 structHash = keccak256(
+                abi.encode(
+                    EXECUTE_BATCH_TYPEHASH,
+                    keccak256(abi.encode(targets)),
+                    keccak256(abi.encode(values)),
+                    _hashDataHashes(data),
+                    nonce_,
+                    deadline
+                )
+            );
+            bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
+            _checkSignatures(digest, signatures);
+            nonce = nonce_ + 1;
+        }
+
+        for (uint256 i = 0; i < count; i++) {
+            (bool ok, bytes memory ret) = targets[i].call{value: values[i]}(data[i]);
+            if (!ok) {
+                _revertWith(ret);
+            }
+        }
+
+        emit BatchExecuted(count, _hashDataHashes(data), nonce_, msg.sender);
     }
 
     /// @notice EIP-1271 signature validator for tooling that expects contract-based signing.
@@ -165,5 +229,13 @@ contract KernelAuthority {
         assembly {
             revert(add(data, 0x20), mload(data))
         }
+    }
+
+    function _hashDataHashes(bytes[] calldata data) private pure returns (bytes32) {
+        bytes32[] memory hashes = new bytes32[](data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            hashes[i] = keccak256(data[i]);
+        }
+        return keccak256(abi.encode(hashes));
     }
 }
