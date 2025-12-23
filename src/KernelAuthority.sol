@@ -18,6 +18,7 @@ contract KernelAuthority {
     );
 
     uint256 private constant SECP256K1N_HALF = 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
+    uint256 private constant EIP2098_S_MASK = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     mapping(address => bool) public isSigner;
     address[] private signers;
@@ -199,19 +200,30 @@ contract KernelAuthority {
     }
 
     function _recover(bytes32 digest, bytes memory signature) private pure returns (address) {
-        require(signature.length == 65, "KernelAuthority: bad signature length");
-
         bytes32 r;
         bytes32 s;
         uint8 v;
-        assembly {
-            r := mload(add(signature, 0x20))
-            s := mload(add(signature, 0x40))
-            v := byte(0, mload(add(signature, 0x60)))
-        }
+        if (signature.length == 65) {
+            assembly {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
 
-        if (v < 27) {
-            v += 27;
+            if (v < 27) {
+                v += 27;
+            }
+        } else if (signature.length == 64) {
+            bytes32 vs;
+            assembly {
+                r := mload(add(signature, 0x20))
+                vs := mload(add(signature, 0x40))
+            }
+
+            s = bytes32(uint256(vs) & EIP2098_S_MASK);
+            v = uint8((uint256(vs) >> 255) + 27);
+        } else {
+            revert("KernelAuthority: bad signature length");
         }
         require(v == 27 || v == 28, "KernelAuthority: bad v");
         require(uint256(s) <= SECP256K1N_HALF, "KernelAuthority: bad s");

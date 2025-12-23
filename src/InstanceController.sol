@@ -52,6 +52,7 @@ contract InstanceController {
 
     bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
     uint256 private constant SECP256K1N_HALF = 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
+    uint256 private constant EIP2098_S_MASK = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     uint8 public constant VERSION = 1;
     uint64 public constant MAX_UPGRADE_DELAY_SEC = 30 days;
@@ -1126,19 +1127,30 @@ contract InstanceController {
     }
 
     function _recover(bytes32 digest, bytes memory signature) private pure returns (address) {
-        require(signature.length == 65, "InstanceController: bad signature length");
-
         bytes32 r;
         bytes32 s;
         uint8 v;
-        assembly {
-            r := mload(add(signature, 0x20))
-            s := mload(add(signature, 0x40))
-            v := byte(0, mload(add(signature, 0x60)))
-        }
+        if (signature.length == 65) {
+            assembly {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
 
-        if (v < 27) {
-            v += 27;
+            if (v < 27) {
+                v += 27;
+            }
+        } else if (signature.length == 64) {
+            bytes32 vs;
+            assembly {
+                r := mload(add(signature, 0x20))
+                vs := mload(add(signature, 0x40))
+            }
+
+            s = bytes32(uint256(vs) & EIP2098_S_MASK);
+            v = uint8((uint256(vs) >> 255) + 27);
+        } else {
+            revert("InstanceController: bad signature length");
         }
         require(v == 27 || v == 28, "InstanceController: bad v");
         require(uint256(s) <= SECP256K1N_HALF, "InstanceController: bad s");

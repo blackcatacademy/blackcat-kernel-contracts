@@ -156,6 +156,10 @@ Authorized upgrade actions (optional, for relayers):
   - `version`: `1`
   - `chainId`: `block.chainid`
   - `verifyingContract`: the controller address
+- Signature encoding:
+  - For EOA authorities: accepts 65-byte `(r,s,v)` or 64-byte EIP-2098 compact `(r,vs)` signatures.
+  - Enforces the “low-s” rule (`s <= secp256k1n/2`) to prevent signature malleability.
+  - For EIP-1271 authorities: forwards `signature` bytes to `isValidSignature(bytes32,bytes)`.
 - Digests include the current `pendingUpgrade.createdAt` and `pendingUpgrade.ttlSec`, so signatures cannot be replayed across different proposals.
 - Helpers:
   - `hashActivateUpgrade(root, uriHash, policyHash, deadline)` → digest

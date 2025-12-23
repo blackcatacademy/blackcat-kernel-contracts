@@ -53,6 +53,8 @@ Trade-offs / warnings:
 - This is custom security code and must be audited before production use.
 - Requires CLI/installer tooling to collect and order signatures.
 - Signatures must be supplied **sorted by signer address** (strictly increasing).
+  - Each signer signature may be 65-byte `(r,s,v)` or 64-byte EIP-2098 compact `(r,vs)`.
+  - The contract enforces “low-s” (`s <= secp256k1n/2`) to prevent malleability.
 
 ### Mode C — EOA (dev only)
 
