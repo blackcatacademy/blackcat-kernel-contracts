@@ -92,6 +92,43 @@ contract KernelAuthorityTest is TestBase {
         assertEq(authority.nonce(), nonceBefore + 1, "nonce not incremented");
     }
 
+    function test_execute_accepts_compact_eip2098_signatures() public {
+        bytes memory data = abi.encodeWithSignature("inc()");
+        uint256 deadline = block.timestamp + 3600;
+        uint256 nonceBefore = authority.nonce();
+
+        bytes32 digest = authority.hashExecute(address(counter), 0, data, nonceBefore, deadline);
+
+        bytes[] memory sigs = new bytes[](2);
+        (uint8 v1, bytes32 r1, bytes32 s1_) = vm.sign(s1.pk, digest);
+        (uint8 v2, bytes32 r2, bytes32 s2_) = vm.sign(s2.pk, digest);
+        sigs[0] = toEip2098Signature(v1, r1, s1_);
+        sigs[1] = toEip2098Signature(v2, r2, s2_);
+
+        authority.execute(address(counter), 0, data, deadline, sigs);
+        assertEq(counter.n(), 1, "counter did not increment");
+        assertEq(authority.nonce(), nonceBefore + 1, "nonce not incremented");
+    }
+
+    function test_execute_rejects_high_s_malleable_signature() public {
+        bytes memory data = abi.encodeWithSignature("inc()");
+        uint256 deadline = block.timestamp + 3600;
+        uint256 nonceBefore = authority.nonce();
+
+        bytes32 digest = authority.hashExecute(address(counter), 0, data, nonceBefore, deadline);
+
+        (uint8 v1, bytes32 r1, bytes32 s1_) = vm.sign(s1.pk, digest);
+        uint256 altS = SECP256K1N - uint256(s1_);
+        assertTrue(altS > SECP256K1N_HALF, "signature is not high-s");
+
+        bytes[] memory sigs = new bytes[](2);
+        sigs[0] = toMalleableHighSSignature(v1, r1, s1_);
+        sigs[1] = _signDigest(s2, digest);
+
+        vm.expectRevert("KernelAuthority: bad s");
+        authority.execute(address(counter), 0, data, deadline, sigs);
+    }
+
     function test_executeBatch_runs_multiple_calls() public {
         address[] memory targets = new address[](2);
         uint256[] memory values = new uint256[](2);

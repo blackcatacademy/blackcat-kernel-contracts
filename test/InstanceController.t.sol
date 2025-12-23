@@ -448,6 +448,58 @@ contract InstanceControllerTest is TestBase {
         assertEq(c.activeRoot(), nextRoot, "active root not updated");
     }
 
+    function test_activateUpgradeAuthorized_accepts_compact_eip2098_root_signature() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        bytes32 nextRoot = keccak256("next-root-auth-2098");
+        bytes32 nextUriHash = keccak256("next-uri-auth-2098");
+        bytes32 nextPolicyHash = keccak256("next-policy-auth-2098");
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
+        bytes memory sig = toEip2098Signature(v, r, s);
+
+        c.activateUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, sig);
+        assertEq(c.activeRoot(), nextRoot, "active root not updated");
+    }
+
+    function test_activateUpgradeAuthorized_rejects_high_s_malleable_signature() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        bytes32 nextRoot = keccak256("next-root-auth-high-s");
+        bytes32 nextUriHash = keccak256("next-uri-auth-high-s");
+        bytes32 nextPolicyHash = keccak256("next-policy-auth-high-s");
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
+        uint256 altS = SECP256K1N - uint256(s);
+        assertTrue(altS > SECP256K1N_HALF, "signature is not high-s");
+        bytes memory malleable = toMalleableHighSSignature(v, r, s);
+
+        vm.expectRevert("InstanceController: bad s");
+        c.activateUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, malleable);
+    }
+
     function test_activateUpgradeAuthorized_accepts_kernelAuthority_root_signature() public {
         uint256 pk1 = 0xA11CE;
         uint256 pk2 = 0xB0B;
@@ -1086,6 +1138,88 @@ contract InstanceControllerTest is TestBase {
         vm.prank(root);
         vm.expectRevert("InstanceController: expected component locked");
         c.setExpectedComponentId(bytes32(0));
+    }
+
+    function test_snapshotV2_flags_set_after_locks() public {
+        ReleaseRegistry registry = new ReleaseRegistry(address(this));
+        bytes32 componentA = keccak256("blackcat-core");
+
+        registry.publish(componentA, 1, genesisRoot, genesisUriHash, 0);
+
+        InstanceFactory strictFactory = new InstanceFactory(address(registry));
+        InstanceController c = InstanceController(
+            strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        vm.prank(root);
+        c.setExpectedComponentId(componentA);
+        vm.prank(root);
+        c.lockExpectedComponentId();
+
+        vm.prank(root);
+        c.setEmergencyCanUnpause(true);
+        vm.prank(root);
+        c.lockEmergencyCanUnpause();
+
+        vm.prank(root);
+        c.setAutoPauseOnBadCheckIn(true);
+        vm.prank(root);
+        c.lockAutoPauseOnBadCheckIn();
+
+        vm.prank(root);
+        c.setCompatibilityWindowSec(3600);
+        vm.prank(root);
+        c.lockCompatibilityWindow();
+
+        vm.prank(root);
+        c.setMinUpgradeDelaySec(60);
+        vm.prank(root);
+        c.lockMinUpgradeDelay();
+
+        vm.prank(root);
+        c.lockReleaseRegistry();
+
+        (bool autoPause,,, uint64 minDelay,,,,,,, uint256 flags) = c.snapshotV2();
+        assertTrue(autoPause, "autoPauseOnBadCheckIn should be true");
+        assertEq(uint256(minDelay), 60, "minUpgradeDelaySec mismatch");
+
+        assertTrue((flags & 1) != 0, "emergencyCanUnpause flag missing");
+        assertTrue((flags & 2) != 0, "releaseRegistryLocked flag missing");
+        assertTrue((flags & 4) != 0, "minUpgradeDelayLocked flag missing");
+        assertTrue((flags & 8) != 0, "emergencyCanUnpauseLocked flag missing");
+        assertTrue((flags & 16) != 0, "autoPauseOnBadCheckInLocked flag missing");
+        assertTrue((flags & 32) != 0, "compatibilityWindowLocked flag missing");
+        assertTrue((flags & 64) != 0, "expectedComponentIdLocked flag missing");
+    }
+
+    function test_revoking_active_root_makes_state_unaccepted() public {
+        ReleaseRegistry registry = new ReleaseRegistry(address(this));
+        bytes32 component = keccak256("blackcat-core");
+
+        bytes32 rootV1 = keccak256("root-v1");
+        bytes32 uriV1 = keccak256("uri-v1");
+        registry.publish(component, 1, rootV1, uriV1, 0);
+
+        InstanceFactory strictFactory = new InstanceFactory(address(registry));
+        InstanceController c = InstanceController(
+            strictFactory.createInstance(root, upgrader, emergency, rootV1, uriV1, genesisPolicyHash)
+        );
+
+        bytes32 rootV2 = keccak256("root-v2");
+        bytes32 uriV2 = keccak256("uri-v2");
+        registry.publish(component, 2, rootV2, uriV2, 0);
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(rootV2, uriV2, genesisPolicyHash, 3600);
+
+        vm.prank(root);
+        c.activateUpgrade();
+
+        assertTrue(c.isAcceptedState(rootV2, uriV2, genesisPolicyHash), "active state should be accepted");
+
+        registry.revoke(component, 2);
+
+        assertTrue(!c.isAcceptedState(rootV2, uriV2, genesisPolicyHash), "revoked active root must be rejected");
     }
 
     function test_lockExpectedComponentId_rejects_zero_value() public {

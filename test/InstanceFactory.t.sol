@@ -94,6 +94,47 @@ contract InstanceFactoryTest is TestBase {
         assertEq(instance.code.length, 45, "unexpected clone code length");
     }
 
+    function test_createInstanceDeterministicAuthorized_accepts_compact_eip2098_root_signature() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+        bytes32 salt = keccak256("salt-auth-1-2098");
+        uint256 deadline = block.timestamp + 3600;
+
+        bytes32 digest = factory.hashSetupRequest(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
+        bytes memory sig = toEip2098Signature(v, r, s);
+
+        address instance = factory.createInstanceDeterministicAuthorized(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline, sig
+        );
+
+        assertEq(instance, factory.predictInstanceAddress(salt), "predicted address mismatch");
+        assertTrue(factory.isInstance(instance), "factory must mark instance");
+        assertEq(instance.code.length, 45, "unexpected clone code length");
+    }
+
+    function test_createInstanceDeterministicAuthorized_rejects_high_s_malleable_signature() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+        bytes32 salt = keccak256("salt-auth-high-s");
+        uint256 deadline = block.timestamp + 3600;
+
+        bytes32 digest = factory.hashSetupRequest(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
+        uint256 altS = SECP256K1N - uint256(s);
+        assertTrue(altS > SECP256K1N_HALF, "signature is not high-s");
+        bytes memory sig = toMalleableHighSSignature(v, r, s);
+
+        vm.expectRevert("InstanceFactory: bad s");
+        factory.createInstanceDeterministicAuthorized(
+            rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline, sig
+        );
+    }
+
     function test_createInstanceDeterministicAuthorized_accepts_kernelAuthority_root_signature() public {
         uint256 pk1 = 0xA11CE;
         uint256 pk2 = 0xB0B;
