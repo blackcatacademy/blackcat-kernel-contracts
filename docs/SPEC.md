@@ -75,11 +75,14 @@ Notes:
 - Version encoding must be stable. v1 uses `uint64` (implementation detail; may evolve).
 - Publishing is gated (owner now; later: governance authority / Safe).
 - Releases are immutable per `(componentId, version)` (republishing is rejected; publish a new version instead).
+- Roots are unique across the registry (a `root` can be published only once) to avoid ambiguity.
 - Ownership uses a 2-step transfer (`transferOwnership` → `acceptOwnership`) to reduce operator mistakes.
 - The registry supports **revocation** per `(componentId, version)`:
   - revocation permanently marks the release as revoked and its `root` as untrusted,
   - `isTrustedRoot(root)` becomes false after revocation,
   - publishing a release with a revoked root is rejected.
+- Operators can publish/revoke in batches (`publishBatch`, `revokeBatch`) and revoke by root (`revokeByRoot`) for operational convenience.
+- A reverse lookup is available (`getByRoot(root)`) for tooling/inspection.
 
 ### `InstanceController` (per install)
 
@@ -93,6 +96,8 @@ State:
 - Optional `releaseRegistry` (if set, upgrades must reference trusted roots)
 - Optional `minUpgradeDelaySec` (timelock)
 - Optional `reporterAuthority` + `lastCheckInAt/lastCheckInOk` (monitoring agent check-in)
+- Optional `autoPauseOnBadCheckIn` (auto-pause latch on a bad check-in)
+- Incident tracking: `incidentCount`, `lastIncidentAt`, `lastIncidentHash`, `lastIncidentBy`
 
 Upgrade flow (v1):
 1. `proposeUpgrade(root, uriHash, policyHash, ttlSec)` (upgrade authority)
@@ -105,10 +110,13 @@ If `releaseRegistry` is set:
 
 Emergency flow:
 - `pause()` / `unpause()` (emergency authority)
+- Root authority can also pause/unpause as a fallback (recommended).
+- `reportIncident(incidentHash)` can be called by root/emergency/reporter and will pause the controller and record incident metadata.
 
 Monitoring / check-ins (v1):
 - `checkIn(observedRoot, observedUriHash, observedPolicyHash)` (reporter authority)
 - The controller records `(lastCheckInAt, lastCheckInOk)` for off-chain health evaluation.
+- If `autoPauseOnBadCheckIn` is enabled, a bad check-in pauses the controller and records an incident.
 
 Runtime optimization (v1):
 - `snapshot()` aggregates the commonly-read state (paused + active hashes + pending proposal) into one `eth_call`.

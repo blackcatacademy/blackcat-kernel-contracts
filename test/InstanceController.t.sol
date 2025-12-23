@@ -55,20 +55,39 @@ contract InstanceControllerTest is TestBase {
         assertTrue(controller.paused() == false, "unpause failed");
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: not emergency authority");
+        controller.pause();
+        assertTrue(controller.paused(), "root pause failed");
+
+        vm.prank(root);
+        controller.unpause();
+        assertTrue(controller.paused() == false, "root unpause failed");
+
+        vm.prank(upgrader);
+        vm.expectRevert("InstanceController: not emergency/root authority");
         controller.pause();
     }
 
     function test_authority_rotation_only_root() public {
         address newRoot = address(0x4444444444444444444444444444444444444444);
+        address newUpgrade = address(0x5555555555555555555555555555555555555555);
 
         vm.prank(root);
-        controller.setRootAuthority(newRoot);
+        controller.startRootAuthorityTransfer(newRoot);
+
+        vm.prank(newRoot);
+        controller.acceptRootAuthority();
         assertEq(controller.rootAuthority(), newRoot, "root authority not updated");
+
+        vm.prank(newRoot);
+        controller.startUpgradeAuthorityTransfer(newUpgrade);
+
+        vm.prank(newUpgrade);
+        controller.acceptUpgradeAuthority();
+        assertEq(controller.upgradeAuthority(), newUpgrade, "upgrade authority not updated");
 
         vm.prank(upgrader);
         vm.expectRevert("InstanceController: not root authority");
-        controller.setUpgradeAuthority(address(0x5555555555555555555555555555555555555555));
+        controller.startUpgradeAuthorityTransfer(address(0x6666666666666666666666666666666666666666));
     }
 
     function test_propose_and_activate_upgrade() public {
@@ -161,7 +180,10 @@ contract InstanceControllerTest is TestBase {
         address reporter = address(0x7777777777777777777777777777777777777777);
 
         vm.prank(root);
-        controller.setReporterAuthority(reporter);
+        controller.startReporterAuthorityTransfer(reporter);
+
+        vm.prank(reporter);
+        controller.acceptReporterAuthority();
 
         vm.prank(reporter);
         controller.checkIn(genesisRoot, genesisUriHash, genesisPolicyHash);
@@ -176,11 +198,53 @@ contract InstanceControllerTest is TestBase {
         address reporter = address(0x7777777777777777777777777777777777777777);
 
         vm.prank(root);
-        controller.setReporterAuthority(reporter);
+        controller.startReporterAuthorityTransfer(reporter);
+
+        vm.prank(reporter);
+        controller.acceptReporterAuthority();
 
         vm.prank(upgrader);
         vm.expectRevert("InstanceController: not reporter authority");
         controller.checkIn(genesisRoot, genesisUriHash, genesisPolicyHash);
+    }
+
+    function test_autoPauseOnBadCheckIn_pauses_and_records_incident() public {
+        address reporter = address(0x7777777777777777777777777777777777777777);
+
+        vm.prank(root);
+        controller.startReporterAuthorityTransfer(reporter);
+
+        vm.prank(reporter);
+        controller.acceptReporterAuthority();
+
+        vm.prank(root);
+        controller.setAutoPauseOnBadCheckIn(true);
+
+        vm.prank(reporter);
+        controller.checkIn(keccak256("wrong-root"), genesisUriHash, genesisPolicyHash);
+
+        assertTrue(controller.paused(), "controller should auto-pause");
+        assertEq(uint256(controller.incidentCount()), 1, "incidentCount mismatch");
+        assertEq(controller.lastIncidentBy(), reporter, "lastIncidentBy mismatch");
+    }
+
+    function test_reportIncident_pauses() public {
+        address reporter = address(0x7777777777777777777777777777777777777777);
+
+        vm.prank(root);
+        controller.startReporterAuthorityTransfer(reporter);
+
+        vm.prank(reporter);
+        controller.acceptReporterAuthority();
+
+        bytes32 incidentHash = keccak256("incident-1");
+
+        vm.prank(reporter);
+        controller.reportIncident(incidentHash);
+
+        assertTrue(controller.paused(), "controller should pause on incident");
+        assertEq(controller.lastIncidentHash(), incidentHash, "incident hash mismatch");
+        assertEq(controller.lastIncidentBy(), reporter, "incident by mismatch");
     }
 
     function test_release_registry_enforces_genesis_and_upgrade_trust() public {

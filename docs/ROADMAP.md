@@ -25,6 +25,7 @@ This roadmap tracks the contract layer of the BlackCat “trust kernel” (Web3 
 - ✅ Add revocation/trust model to `ReleaseRegistry` (`revoke`, `isTrustedRoot`).
 - ✅ Add optional `ReleaseRegistry` enforcement to `InstanceController` (genesis + upgrades).
 - ✅ Add optional upgrade timelock (`minUpgradeDelaySec`) and reporter check-ins to `InstanceController`.
+- ✅ Add 2-step authority rotation and incident reporting to `InstanceController`.
 - ✅ Add deterministic instance creation via CREATE2 (`predictInstanceAddress`, `createInstanceDeterministic`).
 - ✅ Unit tests for storage + access control + upgrade TTL/timelock behavior.
 - ▢ Expand event assertions + fuzz tests (invariants).
