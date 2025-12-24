@@ -41,15 +41,30 @@ contract UploadManifestBlob {
             blobHash = computed;
         }
 
-        uint256 total = data.length;
-        uint64 totalBytes64 = uint64(total);
-        require(uint256(totalBytes64) == total, "UploadManifestBlob: file too large");
+        uint256 totalBytes = data.length;
+        uint64 totalBytes64 = uint64(totalBytes);
+        require(uint256(totalBytes64) == totalBytes, "UploadManifestBlob: file too large");
 
-        uint256 chunksCount = (total + chunkSize - 1) / chunkSize;
+        uint256 chunksCount = (totalBytes + chunkSize - 1) / chunkSize;
         uint64 chunksCount64 = uint64(chunksCount);
         require(uint256(chunksCount64) == chunksCount, "UploadManifestBlob: too many chunks");
 
         vm.startBroadcast(pk);
+        _appendBatches(store, blobHash, data, chunkSize, chunksCount, chunksPerTx);
+
+        ManifestStore(store).finalize(blobHash, chunksCount64, totalBytes64);
+        vm.stopBroadcast();
+    }
+
+    function _appendBatches(
+        address store,
+        bytes32 blobHash,
+        bytes memory data,
+        uint256 chunkSize,
+        uint256 chunksCount,
+        uint256 chunksPerTx
+    ) private {
+        uint256 total = data.length;
         for (uint256 startChunk = 0; startChunk < chunksCount; startChunk += chunksPerTx) {
             uint256 endChunk = startChunk + chunksPerTx;
             if (endChunk > chunksCount) {
@@ -66,17 +81,17 @@ contract UploadManifestBlob {
                     end = total;
                 }
 
-                bytes memory chunk = new bytes(end - offset);
-                for (uint256 j = 0; j < chunk.length; j++) {
-                    chunk[j] = data[offset + j];
-                }
-                batch[i] = chunk;
+                batch[i] = _slice(data, offset, end);
             }
 
             ManifestStore(store).appendChunks(blobHash, batch);
         }
+    }
 
-        ManifestStore(store).finalize(blobHash, chunksCount64, totalBytes64);
-        vm.stopBroadcast();
+    function _slice(bytes memory data, uint256 start, uint256 end) private pure returns (bytes memory chunk) {
+        chunk = new bytes(end - start);
+        for (uint256 i = 0; i < chunk.length; i++) {
+            chunk[i] = data[start + i];
+        }
     }
 }

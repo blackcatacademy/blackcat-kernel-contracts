@@ -25,7 +25,8 @@ Foundry scripts (see `blackcat-kernel-contracts/script/`):
 Use `PublishRelease.s.sol` to publish official releases into `ReleaseRegistry`.
 Relayer option (EIP-712):
 - `PublishReleaseAuthorized.s.sol` calls `publishAuthorized(...)` with an owner signature.
-- Batch relayer primitive: `publishBatchAuthorized(PublishBatchItem[] items, ...)` (intended for `blackcat-cli` / `cast send` because Foundry env does not encode struct arrays well).
+- Batch relayer primitive: `publishBatchAuthorized(PublishBatchItem[] items, ...)`.
+  - Foundry helper: `PublishReleaseBatchAuthorized.s.sol` reads ABI-encoded `PublishBatchItem[]` from `BLACKCAT_RELEASE_PUBLISH_BATCH_ITEMS_PATH`.
 
 Inputs you must compute off-chain:
 - `componentId` (`bytes32`) — stable component identifier
@@ -38,7 +39,8 @@ Revocation:
 - Use `RevokeRelease.s.sol` to revoke a `(componentId, version)`.
 - Relayer option: `RevokeReleaseAuthorized.s.sol` calls `revokeAuthorized(...)` with an owner signature.
 - Revoke by root (relayer): `RevokeByRootAuthorized.s.sol` calls `revokeByRootAuthorized(...)`.
-- Batch relayer primitive: `revokeBatchAuthorized(RevokeBatchItem[] items, ...)` (intended for `blackcat-cli` / `cast send`).
+- Batch relayer primitive: `revokeBatchAuthorized(RevokeBatchItem[] items, ...)`.
+  - Foundry helper: `RevokeReleaseBatchAuthorized.s.sol` reads ABI-encoded `RevokeBatchItem[]` from `BLACKCAT_RELEASE_REVOKE_BATCH_ITEMS_PATH`.
 
 ## Create instance (per install)
 
