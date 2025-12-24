@@ -2,6 +2,11 @@
 
 This is the working specification for the BlackCat **Trust Kernel**.
 
+Related:
+- Diagrams: `blackcat-kernel-contracts/docs/SECURITY_FLOWS.md`
+- Threat model: `blackcat-kernel-contracts/docs/THREAT_MODEL.md`
+- Audit checklist: `blackcat-kernel-contracts/docs/AUDIT_CHECKLIST.md`
+
 ## Goal
 
 BlackCat treats the local host filesystem as untrusted (FTP mistakes, compromised credentials, partial upgrades).

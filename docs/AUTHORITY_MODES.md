@@ -9,6 +9,76 @@ In v1, `InstanceController` only checks:
 
 This means **multi-device security is achieved by choosing authority addresses appropriately**.
 
+## Visual overview (call paths)
+
+```mermaid
+flowchart LR
+  %% ==== Devices ====
+  subgraph Devices["Devices / key custody"]
+    D1["Device 1"]
+    D2["Device 2"]
+    D3["Device 3"]
+  end
+
+  %% ==== Authorities ====
+  subgraph Authorities["Authority address on-chain"]
+    Safe["Safe (multisig wallet)"]
+    KA["KernelAuthority (threshold signer)"]
+    EOA["EOA (single key)"]
+  end
+
+  %% ==== Targets ====
+  subgraph Targets["Kernel targets"]
+    IC["InstanceController"]
+    RR["ReleaseRegistry"]
+    IF["InstanceFactory"]
+    MS["ManifestStore"]
+  end
+
+  %% Mode A: Safe
+  D1 --> Safe
+  D2 --> Safe
+  D3 --> Safe
+  Safe -->|"tx (msg.sender)"| IC
+  Safe -->|"tx (msg.sender)"| RR
+  Safe -->|"tx (msg.sender)"| IF
+  Safe -->|"tx (msg.sender)"| MS
+
+  %% Mode B: KernelAuthority
+  D1 --> KA
+  D2 --> KA
+  KA -->|"execute()/executeBatch()"| IC
+  KA -->|"execute()/executeBatch()"| RR
+  KA -->|"execute()/executeBatch()"| IF
+  KA -->|"execute()/executeBatch()"| MS
+
+  %% Mode C: EOA
+  D1 --> EOA
+  EOA -->|"tx (msg.sender)"| IC
+```
+
+## Visual overview (relayed signatures)
+
+Some operations also support **relayers**: a device signs an EIP-712 message and a relayer submits the transaction.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Signer as Authority (EOA / Safe / KernelAuthority)
+  participant Relayer as Relayer / Operator
+  participant Target as Target contract
+
+  Signer-->>Relayer: EIP-712 signature over digest
+  Relayer->>Target: ...Authorized(..., signature)
+  alt Signer is EOA
+    Target->>Target: ecrecover(digest) == signer
+  else Signer is contract (EIP-1271)
+    Target->>Signer: isValidSignature(digest, signature)
+    Signer-->>Target: MAGICVALUE
+  end
+  Target-->>Relayer: Emit *SignatureConsumed + success
+```
+
 ## Overview
 
 You can choose one of these modes for each authority:
@@ -43,6 +113,25 @@ for bootstrap flows (e.g. factory setup authorization) without needing to execut
 
 For operational convenience, `KernelAuthority` also supports `executeBatch(...)` (single threshold approval for multiple calls).
 
+### Diagram: `KernelAuthority.execute(...)` call flow
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant S1 as Signer device 1
+  participant S2 as Signer device 2
+  participant Relayer as Relayer
+  participant KA as KernelAuthority
+  participant Target as Target contract
+
+  S1-->>Relayer: signature #1 (sorted)
+  S2-->>Relayer: signature #2 (sorted)
+  Relayer->>KA: execute(target, value, data, nonce, deadline, sigs[])
+  KA->>KA: verify signatures + threshold + nonce + deadline
+  KA->>Target: call(target, data) as msg.sender=KernelAuthority
+  Target-->>Relayer: success (normal auth via msg.sender)
+```
+
 Properties:
 - Multi-device is enforced by the contract itself.
 - No Safe dependency.
@@ -76,6 +165,12 @@ Warnings:
 Additionally:
 - Enable controller timelock (`minUpgradeDelaySec`) so proposals can be reviewed before activation.
 - Enable `autoPauseOnBadCheckIn` if you have a reliable reporter agent.
+
+## What must never happen
+
+- Production runs with Mode C (EOA) for `rootAuthority` without an explicit risk acceptance.
+- A relayer is treated as an authority (relayers are *submitters*, not *signers*).
+- Authority addresses can be modified from untrusted runtime config without on-chain attestation/locking.
 
 ## What auditors should look at
 
