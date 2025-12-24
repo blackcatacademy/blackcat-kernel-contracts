@@ -60,6 +60,7 @@ Rolling upgrades:
 - Clear compatibility state: `ClearCompatibilityState.s.sol`
 - Break-glass rollback (within overlap): `RollbackToCompatibilityState.s.sol`
   - Relayer option: `rollbackToCompatibilityStateAuthorized(...)` (see SPEC)
+  - Script: `RollbackToCompatibilityStateAuthorized.s.sol`
 
 ## Monitoring and incidents
 
