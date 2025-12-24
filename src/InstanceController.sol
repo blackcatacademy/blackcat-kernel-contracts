@@ -44,6 +44,9 @@ contract InstanceController {
         keccak256("SetPaused(bool expectedPaused,bool newPaused,uint256 nonce,uint256 deadline)");
     bytes32 private constant ACCEPT_AUTHORITY_TYPEHASH =
         keccak256("AcceptAuthority(bytes32 role,address newAuthority,uint256 nonce,uint256 deadline)");
+    bytes32 private constant ROLLBACK_COMPATIBILITY_TYPEHASH = keccak256(
+        "RollbackCompatibility(bytes32 compatRoot,bytes32 compatUriHash,bytes32 compatPolicyHash,uint64 until,uint256 nonce,uint256 deadline)"
+    );
 
     bytes32 private constant ROLE_ROOT_AUTHORITY = keccak256("root_authority");
     bytes32 private constant ROLE_UPGRADE_AUTHORITY = keccak256("upgrade_authority");
@@ -127,6 +130,7 @@ contract InstanceController {
     uint256 public reporterNonce;
     uint256 public incidentNonce;
     uint256 public pauseNonce;
+    uint256 public rollbackNonce;
 
     uint256 public rootAuthorityTransferNonce;
     uint256 public upgradeAuthorityTransferNonce;
@@ -694,7 +698,55 @@ contract InstanceController {
         CompatibilityState memory compat = compatibilityState;
         require(compat.root != bytes32(0), "InstanceController: no compat state");
         require(block.timestamp <= compat.until, "InstanceController: compat expired");
+        _rollbackToCompatibility(compat);
+    }
 
+    function hashRollbackToCompatibilityState(uint256 deadline) external view returns (bytes32) {
+        CompatibilityState memory compat = compatibilityState;
+        require(compat.root != bytes32(0), "InstanceController: no compat state");
+        require(block.timestamp <= compat.until, "InstanceController: compat expired");
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                ROLLBACK_COMPATIBILITY_TYPEHASH,
+                compat.root,
+                compat.uriHash,
+                compat.policyHash,
+                compat.until,
+                rollbackNonce,
+                deadline
+            )
+        );
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
+    }
+
+    function rollbackToCompatibilityStateAuthorized(uint256 deadline, bytes calldata signature) external {
+        require(block.timestamp <= deadline, "InstanceController: expired");
+
+        CompatibilityState memory compat = compatibilityState;
+        require(compat.root != bytes32(0), "InstanceController: no compat state");
+        require(block.timestamp <= compat.until, "InstanceController: compat expired");
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                ROLLBACK_COMPATIBILITY_TYPEHASH,
+                compat.root,
+                compat.uriHash,
+                compat.policyHash,
+                compat.until,
+                rollbackNonce,
+                deadline
+            )
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
+
+        require(_isValidSignatureNow(rootAuthority, digest, signature), "InstanceController: invalid root signature");
+        emit AuthoritySignatureConsumed(rootAuthority, digest, msg.sender);
+
+        _rollbackToCompatibility(compat);
+    }
+
+    function _rollbackToCompatibility(CompatibilityState memory compat) private {
         address registry = releaseRegistry;
         if (registry != address(0)) {
             require(IReleaseRegistry(registry).isTrustedRoot(compat.root), "InstanceController: root not trusted");
@@ -705,6 +757,8 @@ contract InstanceController {
             require(registry != address(0), "InstanceController: no registry");
             _requireRootComponent(registry, compat.root, expected);
         }
+
+        rollbackNonce += 1;
 
         bytes32 previousRoot = activeRoot;
         activeRoot = compat.root;

@@ -59,6 +59,7 @@ Rolling upgrades:
 - During the overlap, runtimes can accept either active state or compatibility state (`isAcceptedState`).
 - Clear compatibility state: `ClearCompatibilityState.s.sol`
 - Break-glass rollback (within overlap): `RollbackToCompatibilityState.s.sol`
+  - Relayer option: `rollbackToCompatibilityStateAuthorized(...)` (see SPEC)
 
 ## Monitoring and incidents
 

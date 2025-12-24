@@ -949,6 +949,48 @@ contract InstanceControllerTest is TestBase {
         c.rollbackToCompatibilityState();
     }
 
+    function test_rollbackToCompatibilityStateAuthorized_accepts_root_signature_and_is_not_replayable() public {
+        uint256 rootPk = 0xA11CE;
+        address rootAddr = vm.addr(rootPk);
+
+        InstanceFactory f = new InstanceFactory(address(0));
+        InstanceController c = InstanceController(
+            f.createInstance(rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash)
+        );
+
+        vm.prank(rootAddr);
+        c.setCompatibilityWindowSec(3600);
+
+        bytes32 nextRoot = keccak256("next-root-rollback-auth");
+        bytes32 nextUriHash = keccak256("next-uri-rollback-auth");
+        bytes32 nextPolicyHash = keccak256("next-policy-rollback-auth");
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.prank(rootAddr);
+        c.activateUpgrade();
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = c.hashRollbackToCompatibilityState(deadline);
+        bytes memory sig = _sign(rootPk, digest);
+
+        c.rollbackToCompatibilityStateAuthorized(deadline, sig);
+        assertEq(c.activeRoot(), genesisRoot, "should roll back to genesis");
+
+        vm.expectRevert("InstanceController: no compat state");
+        c.rollbackToCompatibilityStateAuthorized(deadline, sig);
+
+        vm.prank(upgrader);
+        c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
+
+        vm.prank(rootAddr);
+        c.activateUpgrade();
+
+        vm.expectRevert("InstanceController: invalid root signature");
+        c.rollbackToCompatibilityStateAuthorized(deadline, sig);
+    }
+
     function test_compatibilityWindow_lock_freezes_value() public {
         vm.prank(root);
         controller.setCompatibilityWindowSec(3600);

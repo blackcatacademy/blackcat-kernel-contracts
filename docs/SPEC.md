@@ -151,6 +151,7 @@ Compatibility overlap (optional):
   - `setCompatibilityWindowSec(sec)` (root authority; bounded by `MAX_COMPATIBILITY_WINDOW_SEC`)
   - `clearCompatibilityState()` (root authority)
   - `rollbackToCompatibilityState()` (root authority; break-glass rollback if still within overlap)
+  - `rollbackToCompatibilityStateAuthorized(...)` (optional; relayer submits a `rootAuthority` EIP-712 signature; anti-replay via `rollbackNonce`)
 
 Authorized upgrade actions (optional, for relayers):
 - EIP-712 domain:
