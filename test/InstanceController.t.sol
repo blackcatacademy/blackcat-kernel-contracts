@@ -767,7 +767,7 @@ contract InstanceControllerTest is TestBase {
         controller.activateUpgrade();
     }
 
-    function test_activate_upgrade_reverts_when_paused() public {
+    function test_activate_upgrade_succeeds_while_paused() public {
         bytes32 nextRoot = keccak256("next-root-paused");
 
         vm.prank(upgrader);
@@ -777,8 +777,9 @@ contract InstanceControllerTest is TestBase {
         controller.pause();
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: paused");
         controller.activateUpgrade();
+        assertTrue(controller.paused(), "should remain paused after upgrade");
+        assertEq(controller.activeRoot(), nextRoot, "active root not updated");
     }
 
     function test_activate_upgrade_enforces_timelock() public {

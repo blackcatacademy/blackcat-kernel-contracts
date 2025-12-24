@@ -1176,7 +1176,6 @@ contract InstanceController {
     }
 
     function _activateUpgrade(UpgradeProposal memory upgrade) private {
-        require(!paused, "InstanceController: paused");
         require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
         require(
             block.timestamp >= uint256(upgrade.createdAt) + uint256(minUpgradeDelaySec),

@@ -139,9 +139,10 @@ Upgrade flow (v1):
    - Optional: `cancelUpgradeAuthorized(...)` allows a relayer to cancel using a `rootAuthority` EIP-712 signature (EOA or EIP-1271).
 3. `activateUpgrade()` (root authority, within TTL and after timelock, if configured)
    - Optional: `activateUpgradeAuthorized(...)` allows a relayer to activate using a `rootAuthority` EIP-712 signature (EOA or EIP-1271).
+   - Can be executed while `paused=true` (recommended for incident recovery: keep the runtime paused while applying a patch).
 4. Optional safety helpers (same auth as above):
-   - `cancelUpgradeExpected(...)` to avoid cancelling the wrong pending proposal.
-   - `activateUpgradeExpected(...)` to avoid activating an unexpected pending proposal.
+  - `cancelUpgradeExpected(...)` to avoid cancelling the wrong pending proposal.
+  - `activateUpgradeExpected(...)` to avoid activating an unexpected pending proposal.
 
 Compatibility overlap (optional):
 - If `compatibilityWindowSec` is non-zero, `activateUpgrade*` stores the previous active `{root, uriHash, policyHash}` as `compatibilityState` for `compatibilityWindowSec`.
