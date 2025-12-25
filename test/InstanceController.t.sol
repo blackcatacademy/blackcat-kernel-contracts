@@ -18,6 +18,30 @@ contract InstanceControllerTest is TestBase {
     bytes32 private genesisUriHash = keccak256("uri");
     bytes32 private genesisPolicyHash = keccak256("policy");
 
+    bytes32 private constant SET_PAUSED_TYPEHASH =
+        keccak256("SetPaused(bool expectedPaused,bool newPaused,uint256 nonce,uint256 deadline)");
+    bytes32 private constant ACCEPT_AUTHORITY_TYPEHASH =
+        keccak256("AcceptAuthority(bytes32 role,address newAuthority,uint256 nonce,uint256 deadline)");
+    bytes32 private constant ACTIVATE_UPGRADE_TYPEHASH = keccak256(
+        "ActivateUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint256 proposalNonce,uint64 createdAt,uint64 ttlSec,uint256 deadline)"
+    );
+    bytes32 private constant CANCEL_UPGRADE_TYPEHASH = keccak256(
+        "CancelUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint256 proposalNonce,uint64 createdAt,uint64 ttlSec,uint256 deadline)"
+    );
+    bytes32 private constant CHECKIN_TYPEHASH = keccak256(
+        "CheckIn(bytes32 observedRoot,bytes32 observedUriHash,bytes32 observedPolicyHash,uint256 nonce,uint256 deadline)"
+    );
+    bytes32 private constant REPORT_INCIDENT_TYPEHASH =
+        keccak256("ReportIncident(bytes32 incidentHash,uint256 nonce,uint256 deadline)");
+    bytes32 private constant ROLLBACK_COMPATIBILITY_TYPEHASH = keccak256(
+        "RollbackCompatibility(bytes32 compatRoot,bytes32 compatUriHash,bytes32 compatPolicyHash,uint64 until,uint256 nonce,uint256 deadline)"
+    );
+
+    bytes32 private constant ROLE_ROOT_AUTHORITY = keccak256("root_authority");
+    bytes32 private constant ROLE_UPGRADE_AUTHORITY = keccak256("upgrade_authority");
+    bytes32 private constant ROLE_EMERGENCY_AUTHORITY = keccak256("emergency_authority");
+    bytes32 private constant ROLE_REPORTER_AUTHORITY = keccak256("reporter_authority");
+
     function setUp() public {
         factory = new InstanceFactory(address(0));
         address instance =
@@ -37,12 +61,12 @@ contract InstanceControllerTest is TestBase {
     }
 
     function test_initialize_reverts_on_second_call() public {
-        vm.expectRevert("InstanceController: already initialized");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.AlreadyInitialized.selector));
         controller.initialize(root, upgrader, emergency, address(0), genesisRoot, genesisUriHash, genesisPolicyHash);
     }
 
     function test_initialize_rejects_zero_authorities_via_factory() public {
-        vm.expectRevert("InstanceController: root=0");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.ZeroRootAuthority.selector));
         factory.createInstance(address(0), upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash);
     }
 
@@ -52,7 +76,7 @@ contract InstanceControllerTest is TestBase {
         assertTrue(controller.paused(), "pause failed");
 
         vm.prank(emergency);
-        vm.expectRevert("InstanceController: emergency cannot unpause");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.EmergencyCannotUnpause.selector));
         controller.unpause();
 
         vm.prank(root);
@@ -68,7 +92,7 @@ contract InstanceControllerTest is TestBase {
         assertTrue(controller.paused() == false, "root unpause failed");
 
         vm.prank(upgrader);
-        vm.expectRevert("InstanceController: not emergency/root authority");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.NotEmergencyOrRootAuthority.selector));
         controller.pause();
     }
 
@@ -93,7 +117,7 @@ contract InstanceControllerTest is TestBase {
         controller.lockEmergencyCanUnpause();
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: unpause policy locked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.EmergencyUnpausePolicyIsLocked.selector));
         controller.setEmergencyCanUnpause(false);
     }
 
@@ -109,16 +133,16 @@ contract InstanceControllerTest is TestBase {
         assertTrue(!c.paused(), "should start unpaused");
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 unpauseDigest = c.hashSetPaused(true, false, deadline);
+        bytes32 unpauseDigest = _digestSetPaused(c, true, false, deadline);
         bytes memory unpauseSig = _sign(emergencyPk, unpauseDigest);
 
-        bytes32 pauseDigest = c.hashSetPaused(false, true, deadline);
+        bytes32 pauseDigest = _digestSetPaused(c, false, true, deadline);
         bytes memory pauseSig = _sign(emergencyPk, pauseDigest);
 
         c.setPausedAuthorized(false, true, deadline, pauseSig);
         assertTrue(c.paused(), "should be paused");
 
-        vm.expectRevert("InstanceController: invalid pause signature");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.InvalidPauseSignature.selector));
         c.setPausedAuthorized(true, false, deadline, unpauseSig);
     }
 
@@ -132,14 +156,14 @@ contract InstanceControllerTest is TestBase {
         );
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 pauseDigest = c.hashSetPaused(false, true, deadline);
+        bytes32 pauseDigest = _digestSetPaused(c, false, true, deadline);
         bytes memory pauseSig = _sign(emergencyPk, pauseDigest);
         c.setPausedAuthorized(false, true, deadline, pauseSig);
         assertTrue(c.paused(), "should be paused");
 
-        bytes32 unpauseDigest = c.hashSetPaused(true, false, deadline);
+        bytes32 unpauseDigest = _digestSetPaused(c, true, false, deadline);
         bytes memory unpauseSig = _sign(emergencyPk, unpauseDigest);
-        vm.expectRevert("InstanceController: emergency cannot unpause");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.EmergencyCannotUnpause.selector));
         c.setPausedAuthorized(true, false, deadline, unpauseSig);
     }
 
@@ -153,10 +177,10 @@ contract InstanceControllerTest is TestBase {
         );
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashSetPaused(true, false, deadline);
+        bytes32 digest = _digestSetPaused(c, true, false, deadline);
         bytes memory sig = _sign(emergencyPk, digest);
 
-        vm.expectRevert("InstanceController: paused mismatch");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.PausedMismatch.selector));
         c.setPausedAuthorized(true, false, deadline, sig);
     }
 
@@ -179,7 +203,7 @@ contract InstanceControllerTest is TestBase {
         assertEq(controller.upgradeAuthority(), newUpgrade, "upgrade authority not updated");
 
         vm.prank(upgrader);
-        vm.expectRevert("InstanceController: not root authority");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.NotRootAuthority.selector));
         controller.startUpgradeAuthorityTransfer(address(0x6666666666666666666666666666666666666666));
     }
 
@@ -200,13 +224,15 @@ contract InstanceControllerTest is TestBase {
         assertEq(c.rootAuthorityTransferNonce(), 1, "root transfer nonce should increment");
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashAcceptRootAuthority(newRootAddr, deadline);
+        bytes32 digest = _digestAcceptAuthority(
+            c, ROLE_ROOT_AUTHORITY, newRootAddr, c.rootAuthorityTransferNonce(), deadline
+        );
         bytes memory sig = _sign(newRootPk, digest);
 
         c.acceptRootAuthorityAuthorized(newRootAddr, deadline, sig);
         assertEq(c.rootAuthority(), newRootAddr, "root authority not updated");
 
-        vm.expectRevert("InstanceController: no pending root");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.NoPendingRootAuthority.selector));
         c.acceptRootAuthorityAuthorized(newRootAddr, deadline, sig);
     }
 
@@ -226,13 +252,15 @@ contract InstanceControllerTest is TestBase {
         c.startRootAuthorityTransfer(newRootAddr);
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashAcceptRootAuthority(newRootAddr, deadline);
+        bytes32 digest = _digestAcceptAuthority(
+            c, ROLE_ROOT_AUTHORITY, newRootAddr, c.rootAuthorityTransferNonce(), deadline
+        );
         bytes memory sig = _sign(newRootPk, digest);
 
         vm.prank(rootAddr);
         c.startRootAuthorityTransfer(newRootAddr);
 
-        vm.expectRevert("InstanceController: invalid pending root signature");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.InvalidPendingAuthoritySignature.selector));
         c.acceptRootAuthorityAuthorized(newRootAddr, deadline, sig);
     }
 
@@ -253,7 +281,9 @@ contract InstanceControllerTest is TestBase {
         assertEq(c.upgradeAuthorityTransferNonce(), 1, "upgrade transfer nonce should increment");
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashAcceptUpgradeAuthority(newUpgradeAddr, deadline);
+        bytes32 digest = _digestAcceptAuthority(
+            c, ROLE_UPGRADE_AUTHORITY, newUpgradeAddr, c.upgradeAuthorityTransferNonce(), deadline
+        );
         bytes memory sig = _sign(newUpgradePk, digest);
 
         c.acceptUpgradeAuthorityAuthorized(newUpgradeAddr, deadline, sig);
@@ -277,7 +307,9 @@ contract InstanceControllerTest is TestBase {
         assertEq(c.emergencyAuthorityTransferNonce(), 1, "emergency transfer nonce should increment");
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashAcceptEmergencyAuthority(newEmergencyAddr, deadline);
+        bytes32 digest = _digestAcceptAuthority(
+            c, ROLE_EMERGENCY_AUTHORITY, newEmergencyAddr, c.emergencyAuthorityTransferNonce(), deadline
+        );
         bytes memory sig = _sign(newEmergencyPk, digest);
 
         c.acceptEmergencyAuthorityAuthorized(newEmergencyAddr, deadline, sig);
@@ -293,7 +325,9 @@ contract InstanceControllerTest is TestBase {
         assertEq(controller.reporterAuthorityTransferNonce(), 1, "reporter transfer nonce should increment");
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = controller.hashAcceptReporterAuthority(reporterAddr, deadline);
+        bytes32 digest = _digestAcceptAuthority(
+            controller, ROLE_REPORTER_AUTHORITY, reporterAddr, controller.reporterAuthorityTransferNonce(), deadline
+        );
         bytes memory sig = _sign(reporterPk, digest);
 
         controller.acceptReporterAuthorityAuthorized(reporterAddr, deadline, sig);
@@ -311,7 +345,7 @@ contract InstanceControllerTest is TestBase {
         assertTrue(controller.attestationUpdatedAt(key) != 0, "attestation updatedAt should be set");
 
         vm.prank(upgrader);
-        vm.expectRevert("InstanceController: not root authority");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.NotRootAuthority.selector));
         controller.setAttestation(key, keccak256("v2"));
     }
 
@@ -326,11 +360,11 @@ contract InstanceControllerTest is TestBase {
         assertTrue(controller.attestationLocked(key), "attestation should be locked");
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: attestation locked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.AttestationKeyIsLocked.selector));
         controller.setAttestation(key, keccak256("v2"));
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: attestation locked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.AttestationKeyIsLocked.selector));
         controller.clearAttestation(key);
     }
 
@@ -338,7 +372,7 @@ contract InstanceControllerTest is TestBase {
         bytes32 key = keccak256("config.runtime.v1");
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: no attestation");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.NoAttestation.selector));
         controller.lockAttestationKey(key);
     }
 
@@ -354,7 +388,7 @@ contract InstanceControllerTest is TestBase {
         assertTrue(controller.attestationUpdatedAt(key) != 0, "updatedAt should be set");
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: attestation locked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.AttestationKeyIsLocked.selector));
         controller.setAttestationExpected(key, value, keccak256("v2"));
     }
 
@@ -365,7 +399,7 @@ contract InstanceControllerTest is TestBase {
         controller.setAttestation(key, keccak256("v1"));
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: attestation mismatch");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.AttestationMismatch.selector));
         controller.setAttestationExpected(key, keccak256("wrong"), keccak256("v2"));
     }
 
@@ -379,7 +413,7 @@ contract InstanceControllerTest is TestBase {
         controller.clearAttestation(key);
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: attestation already cleared");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.AttestationAlreadyCleared.selector));
         controller.clearAttestation(key);
     }
 
@@ -419,7 +453,7 @@ contract InstanceControllerTest is TestBase {
         controller.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: pending mismatch");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.PendingMismatch.selector));
         controller.activateUpgradeExpected(nextRoot, nextUriHash, keccak256("wrong"));
     }
 
@@ -440,7 +474,7 @@ contract InstanceControllerTest is TestBase {
         c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        bytes32 digest = _digestActivateUpgrade(c, nextRoot, nextUriHash, nextPolicyHash, deadline);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
         bytes memory sig = abi.encodePacked(r, s, v);
 
@@ -465,7 +499,7 @@ contract InstanceControllerTest is TestBase {
         c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        bytes32 digest = _digestActivateUpgrade(c, nextRoot, nextUriHash, nextPolicyHash, deadline);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
         bytes memory sig = toEip2098Signature(v, r, s);
 
@@ -490,13 +524,13 @@ contract InstanceControllerTest is TestBase {
         c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        bytes32 digest = _digestActivateUpgrade(c, nextRoot, nextUriHash, nextPolicyHash, deadline);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
         uint256 altS = SECP256K1N - uint256(s);
         assertTrue(altS > SECP256K1N_HALF, "signature is not high-s");
         bytes memory malleable = toMalleableHighSSignature(v, r, s);
 
-        vm.expectRevert("InstanceController: bad s");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.BadS.selector));
         c.activateUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, malleable);
     }
 
@@ -517,7 +551,7 @@ contract InstanceControllerTest is TestBase {
         c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        bytes32 digest = _digestActivateUpgrade(c, nextRoot, nextUriHash, nextPolicyHash, deadline);
         bytes memory sig = _sign(rootPk, digest);
 
         vm.prank(rootAddr);
@@ -526,7 +560,7 @@ contract InstanceControllerTest is TestBase {
         vm.prank(upgrader);
         c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
-        vm.expectRevert("InstanceController: invalid root signature");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.InvalidRootSignature.selector));
         c.activateUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, sig);
     }
 
@@ -559,7 +593,7 @@ contract InstanceControllerTest is TestBase {
         c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashActivateUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        bytes32 digest = _digestActivateUpgrade(c, nextRoot, nextUriHash, nextPolicyHash, deadline);
 
         bytes[] memory sigs = new bytes[](2);
         if (a1 < a2) {
@@ -592,7 +626,7 @@ contract InstanceControllerTest is TestBase {
         c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashCancelUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        bytes32 digest = _digestCancelUpgrade(c, nextRoot, nextUriHash, nextPolicyHash, deadline);
         bytes memory sig = _sign(rootPk, digest);
 
         c.cancelUpgradeAuthorized(nextRoot, nextUriHash, nextPolicyHash, deadline, sig);
@@ -629,7 +663,7 @@ contract InstanceControllerTest is TestBase {
         c.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashCancelUpgrade(nextRoot, nextUriHash, nextPolicyHash, deadline);
+        bytes32 digest = _digestCancelUpgrade(c, nextRoot, nextUriHash, nextPolicyHash, deadline);
 
         bytes[] memory sigs = new bytes[](2);
         if (a1 < a2) {
@@ -679,7 +713,7 @@ contract InstanceControllerTest is TestBase {
         controller.proposeUpgrade(nextRoot, nextUriHash, nextPolicyHash, 3600);
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: pending mismatch");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.PendingMismatch.selector));
         controller.cancelUpgradeExpected(nextRoot, keccak256("wrong"), nextPolicyHash);
     }
 
@@ -725,13 +759,13 @@ contract InstanceControllerTest is TestBase {
         controller.lockReleaseRegistry();
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: registry locked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.ReleaseRegistryPointerLocked.selector));
         controller.setReleaseRegistry(address(0));
     }
 
     function test_lockReleaseRegistry_rejects_without_registry() public {
         vm.prank(root);
-        vm.expectRevert("InstanceController: no registry");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.NoReleaseRegistry.selector));
         controller.lockReleaseRegistry();
     }
 
@@ -743,13 +777,13 @@ contract InstanceControllerTest is TestBase {
         controller.lockMinUpgradeDelay();
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: delay locked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.DelayLocked.selector));
         controller.setMinUpgradeDelaySec(0);
     }
 
     function test_lockMinUpgradeDelay_rejects_zero_delay() public {
         vm.prank(root);
-        vm.expectRevert("InstanceController: delay=0");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.DelayZero.selector));
         controller.lockMinUpgradeDelay();
     }
 
@@ -763,7 +797,7 @@ contract InstanceControllerTest is TestBase {
         vm.warp(uint256(createdAt) + uint256(ttlSec) + 1);
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: upgrade expired");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.UpgradeExpired.selector));
         controller.activateUpgrade();
     }
 
@@ -795,7 +829,7 @@ contract InstanceControllerTest is TestBase {
         (,,, uint64 createdAt,) = controller.pendingUpgrade();
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: upgrade timelocked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.UpgradeTimelocked.selector));
         controller.activateUpgrade();
 
         vm.warp(uint256(createdAt) + uint256(delaySec));
@@ -914,7 +948,7 @@ contract InstanceControllerTest is TestBase {
         vm.warp(block.timestamp + 2);
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: compat expired");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.CompatibilityExpired.selector));
         c.rollbackToCompatibilityState();
     }
 
@@ -946,7 +980,7 @@ contract InstanceControllerTest is TestBase {
         registry.revoke(component, 1);
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: root not trusted");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.RootNotTrusted.selector));
         c.rollbackToCompatibilityState();
     }
 
@@ -973,13 +1007,13 @@ contract InstanceControllerTest is TestBase {
         c.activateUpgrade();
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashRollbackToCompatibilityState(deadline);
+        bytes32 digest = _digestRollbackToCompatibilityState(c, deadline);
         bytes memory sig = _sign(rootPk, digest);
 
         c.rollbackToCompatibilityStateAuthorized(deadline, sig);
         assertEq(c.activeRoot(), genesisRoot, "should roll back to genesis");
 
-        vm.expectRevert("InstanceController: no compat state");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.NoCompatibilityState.selector));
         c.rollbackToCompatibilityStateAuthorized(deadline, sig);
 
         vm.prank(upgrader);
@@ -988,7 +1022,7 @@ contract InstanceControllerTest is TestBase {
         vm.prank(rootAddr);
         c.activateUpgrade();
 
-        vm.expectRevert("InstanceController: invalid root signature");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.InvalidRootSignature.selector));
         c.rollbackToCompatibilityStateAuthorized(deadline, sig);
     }
 
@@ -1000,7 +1034,7 @@ contract InstanceControllerTest is TestBase {
         controller.lockCompatibilityWindow();
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: window locked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.WindowLocked.selector));
         controller.setCompatibilityWindowSec(0);
     }
 
@@ -1008,7 +1042,7 @@ contract InstanceControllerTest is TestBase {
         uint64 tooLarge = controller.MAX_UPGRADE_DELAY_SEC() + 1;
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: delay too large");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.DelayTooLarge.selector));
         controller.setMinUpgradeDelaySec(tooLarge);
     }
 
@@ -1016,7 +1050,7 @@ contract InstanceControllerTest is TestBase {
         uint64 tooLarge = controller.MAX_UPGRADE_TTL_SEC() + 1;
 
         vm.prank(upgrader);
-        vm.expectRevert("InstanceController: ttl too large");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.TtlTooLarge.selector));
         controller.proposeUpgrade(keccak256("root"), 0, 0, tooLarge);
     }
 
@@ -1048,7 +1082,7 @@ contract InstanceControllerTest is TestBase {
         controller.acceptReporterAuthority();
 
         vm.prank(upgrader);
-        vm.expectRevert("InstanceController: not reporter authority");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.NotReporterAuthority.selector));
         controller.checkIn(genesisRoot, genesisUriHash, genesisPolicyHash);
     }
 
@@ -1063,7 +1097,7 @@ contract InstanceControllerTest is TestBase {
         controller.acceptReporterAuthority();
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = controller.hashCheckIn(genesisRoot, genesisUriHash, genesisPolicyHash, deadline);
+        bytes32 digest = _digestCheckIn(controller, genesisRoot, genesisUriHash, genesisPolicyHash, deadline);
         bytes memory sig = _sign(reporterPk, digest);
 
         uint256 nonceBefore = controller.reporterNonce();
@@ -1072,7 +1106,7 @@ contract InstanceControllerTest is TestBase {
         assertEq(controller.reporterNonce(), nonceBefore + 1, "reporterNonce not incremented");
         assertTrue(controller.lastCheckInOk(), "authorized checkIn should be ok");
 
-        vm.expectRevert("InstanceController: invalid reporter signature");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.InvalidReporterSignature.selector));
         controller.checkInAuthorized(genesisRoot, genesisUriHash, genesisPolicyHash, deadline, sig);
     }
 
@@ -1099,7 +1133,7 @@ contract InstanceControllerTest is TestBase {
         controller.acceptReporterAuthority();
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = controller.hashCheckIn(genesisRoot, genesisUriHash, genesisPolicyHash, deadline);
+        bytes32 digest = _digestCheckIn(controller, genesisRoot, genesisUriHash, genesisPolicyHash, deadline);
 
         bytes[] memory sigs = new bytes[](2);
         if (a1 < a2) {
@@ -1143,7 +1177,7 @@ contract InstanceControllerTest is TestBase {
         controller.lockAutoPauseOnBadCheckIn();
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: auto-pause locked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.AutoPauseLocked.selector));
         controller.setAutoPauseOnBadCheckIn(false);
     }
 
@@ -1179,7 +1213,7 @@ contract InstanceControllerTest is TestBase {
         c.pause();
 
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashSetPaused(true, false, deadline);
+        bytes32 digest = _digestSetPaused(c, true, false, deadline);
         bytes memory sig = _sign(rootPk, digest);
 
         uint256 pauseNonceBefore = c.pauseNonce();
@@ -1189,7 +1223,7 @@ contract InstanceControllerTest is TestBase {
 
         assertEq(c.pauseNonce(), pauseNonceBefore + 1, "pauseNonce should increment on incident while paused");
 
-        vm.expectRevert("InstanceController: invalid pause signature");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.InvalidPauseSignature.selector));
         c.setPausedAuthorized(true, false, deadline, sig);
     }
 
@@ -1204,7 +1238,7 @@ contract InstanceControllerTest is TestBase {
 
         bytes32 incidentHash = keccak256("incident-auth");
         uint256 deadline = block.timestamp + 3600;
-        bytes32 digest = c.hashReportIncident(incidentHash, deadline);
+        bytes32 digest = _digestReportIncident(c, incidentHash, deadline);
         bytes memory sig = _sign(rootPk, digest);
 
         uint256 nonceBefore = c.incidentNonce();
@@ -1213,8 +1247,119 @@ contract InstanceControllerTest is TestBase {
         assertTrue(c.paused(), "controller should pause on authorized incident");
         assertEq(c.incidentNonce(), nonceBefore + 1, "incidentNonce not incremented");
 
-        vm.expectRevert("InstanceController: invalid incident signature");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.InvalidIncidentSignature.selector));
         c.reportIncidentAuthorized(incidentHash, deadline, sig);
+    }
+
+    function _hashTypedData(InstanceController c, bytes32 structHash) private view returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19\x01", c.domainSeparator(), structHash));
+    }
+
+    function _digestSetPaused(InstanceController c, bool expectedPaused, bool newPaused, uint256 deadline)
+        private
+        view
+        returns (bytes32)
+    {
+        bytes32 structHash =
+            keccak256(abi.encode(SET_PAUSED_TYPEHASH, expectedPaused, newPaused, c.pauseNonce(), deadline));
+        return _hashTypedData(c, structHash);
+    }
+
+    function _digestAcceptAuthority(
+        InstanceController c,
+        bytes32 role,
+        address newAuthority,
+        uint256 nonce,
+        uint256 deadline
+    ) private view returns (bytes32) {
+        bytes32 structHash = keccak256(abi.encode(ACCEPT_AUTHORITY_TYPEHASH, role, newAuthority, nonce, deadline));
+        return _hashTypedData(c, structHash);
+    }
+
+    function _digestCheckIn(
+        InstanceController c,
+        bytes32 observedRoot,
+        bytes32 observedUriHash,
+        bytes32 observedPolicyHash,
+        uint256 deadline
+    ) private view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                CHECKIN_TYPEHASH, observedRoot, observedUriHash, observedPolicyHash, c.reporterNonce(), deadline
+            )
+        );
+        return _hashTypedData(c, structHash);
+    }
+
+    function _digestReportIncident(InstanceController c, bytes32 incidentHash, uint256 deadline)
+        private
+        view
+        returns (bytes32)
+    {
+        bytes32 structHash = keccak256(abi.encode(REPORT_INCIDENT_TYPEHASH, incidentHash, c.incidentNonce(), deadline));
+        return _hashTypedData(c, structHash);
+    }
+
+    function _digestCancelUpgrade(
+        InstanceController c,
+        bytes32 root_,
+        bytes32 uriHash,
+        bytes32 policyHash,
+        uint256 deadline
+    ) private view returns (bytes32) {
+        (,,, uint64 createdAt, uint64 ttlSec) = c.pendingUpgrade();
+        bytes32 structHash = keccak256(
+            abi.encode(
+                CANCEL_UPGRADE_TYPEHASH,
+                root_,
+                uriHash,
+                policyHash,
+                c.pendingUpgradeNonce(),
+                createdAt,
+                ttlSec,
+                deadline
+            )
+        );
+        return _hashTypedData(c, structHash);
+    }
+
+    function _digestActivateUpgrade(
+        InstanceController c,
+        bytes32 root_,
+        bytes32 uriHash,
+        bytes32 policyHash,
+        uint256 deadline
+    ) private view returns (bytes32) {
+        (,,, uint64 createdAt, uint64 ttlSec) = c.pendingUpgrade();
+        bytes32 structHash = keccak256(
+            abi.encode(
+                ACTIVATE_UPGRADE_TYPEHASH,
+                root_,
+                uriHash,
+                policyHash,
+                c.pendingUpgradeNonce(),
+                createdAt,
+                ttlSec,
+                deadline
+            )
+        );
+        return _hashTypedData(c, structHash);
+    }
+
+    function _digestRollbackToCompatibilityState(InstanceController c, uint256 deadline) private view returns (bytes32) {
+        (bytes32 compatRoot, bytes32 compatUriHash, bytes32 compatPolicyHash, uint64 until) = c.compatibilityState();
+        bytes32 structHash = keccak256(
+            abi.encode(
+                ROLLBACK_COMPATIBILITY_TYPEHASH,
+                compatRoot,
+                compatUriHash,
+                compatPolicyHash,
+                until,
+                c.rollbackNonce(),
+                deadline
+            )
+        );
+        return _hashTypedData(c, structHash);
     }
 
     function _sign(uint256 pk, bytes32 digest) private returns (bytes memory) {
@@ -1234,7 +1379,7 @@ contract InstanceControllerTest is TestBase {
         InstanceController strictController = InstanceController(instance);
 
         vm.prank(upgrader);
-        vm.expectRevert("InstanceController: root not trusted");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.RootNotTrusted.selector));
         strictController.proposeUpgrade(keccak256("untrusted-root"), 0, 0, 3600);
 
         bytes32 nextRoot = keccak256("trusted-root");
@@ -1246,13 +1391,13 @@ contract InstanceControllerTest is TestBase {
         registry.revoke(component, 2);
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: root not trusted");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.RootNotTrusted.selector));
         strictController.activateUpgrade();
     }
 
     function test_setExpectedComponentId_rejects_without_registry() public {
         vm.prank(root);
-        vm.expectRevert("InstanceController: no registry");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.NoReleaseRegistry.selector));
         controller.setExpectedComponentId(keccak256("blackcat-core"));
     }
 
@@ -1275,15 +1420,15 @@ contract InstanceControllerTest is TestBase {
         c.setExpectedComponentId(componentA);
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: expected component set");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.ExpectedComponentSet.selector));
         c.setReleaseRegistry(address(0));
 
         vm.prank(upgrader);
-        vm.expectRevert("InstanceController: component mismatch");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.ComponentMismatch.selector));
         c.proposeUpgrade(otherRoot, 0, 0, 3600);
 
         vm.prank(upgrader);
-        vm.expectRevert("InstanceController: component mismatch");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.ComponentMismatch.selector));
         c.proposeUpgradeByRelease(componentB, 1, 0, 3600);
 
         bytes32 nextRoot = keccak256("trusted-root-a2");
@@ -1311,7 +1456,7 @@ contract InstanceControllerTest is TestBase {
         c.lockExpectedComponentId();
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: expected component locked");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.ExpectedComponentLocked.selector));
         c.setExpectedComponentId(bytes32(0));
     }
 
@@ -1409,7 +1554,7 @@ contract InstanceControllerTest is TestBase {
         );
 
         vm.prank(root);
-        vm.expectRevert("InstanceController: componentId=0");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.ZeroComponentId.selector));
         c.lockExpectedComponentId();
     }
 
@@ -1451,7 +1596,7 @@ contract InstanceControllerTest is TestBase {
         ReleaseRegistry registry = new ReleaseRegistry(address(this));
         InstanceFactory strictFactory = new InstanceFactory(address(registry));
 
-        vm.expectRevert("InstanceController: genesis root not trusted");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.GenesisRootNotTrusted.selector));
         strictFactory.createInstance(root, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash);
     }
 }

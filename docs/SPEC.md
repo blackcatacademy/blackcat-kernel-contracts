@@ -5,6 +5,7 @@ This is the working specification for the BlackCat **Trust Kernel**.
 Related:
 - Diagrams: `blackcat-kernel-contracts/docs/SECURITY_FLOWS.md`
 - Threat model: `blackcat-kernel-contracts/docs/THREAT_MODEL.md`
+- Policy enforcement: `blackcat-kernel-contracts/docs/POLICY_ENFORCEMENT.md`
 - Audit checklist: `blackcat-kernel-contracts/docs/AUDIT_CHECKLIST.md`
 
 ## Goal
@@ -178,12 +179,37 @@ Authorized upgrade actions (optional, for relayers):
   - Enforces the “low-s” rule (`s <= secp256k1n/2`) to prevent signature malleability.
   - For EIP-1271 authorities: forwards `signature` bytes to `isValidSignature(bytes32,bytes)`.
 - Digests include the current `pendingUpgradeNonce` and `pendingUpgrade.createdAt`/`pendingUpgrade.ttlSec`, so signatures cannot be replayed across different proposals (even if two proposals happen in the same timestamp).
-- Helpers:
-  - `hashActivateUpgrade(root, uriHash, policyHash, deadline)` → digest
-  - `hashCancelUpgrade(root, uriHash, policyHash, deadline)` → digest
+- Digest computation:
+  - To keep the `InstanceController` deployable under EIP-170 (24,576B runtime), v1 intentionally does **not** expose on-chain `hash*` helper view functions.
+  - Off-chain tooling computes digests using the canonical type strings below and `domainSeparator()`.
 - Execution:
   - `activateUpgradeAuthorized(...)` / `cancelUpgradeAuthorized(...)` accept signatures from `rootAuthority` (EOA or EIP-1271 contract).
   - The controller emits `AuthoritySignatureConsumed(authority, digest, relayer)` for audit traces.
+
+### InstanceController EIP-712 type strings (canonical)
+
+These must match exactly (no spaces).
+
+- `SetPaused`:
+  - `SetPaused(bool expectedPaused,bool newPaused,uint256 nonce,uint256 deadline)`
+- `AcceptAuthority`:
+  - `AcceptAuthority(bytes32 role,address newAuthority,uint256 nonce,uint256 deadline)`
+- `RollbackCompatibility`:
+  - `RollbackCompatibility(bytes32 compatRoot,bytes32 compatUriHash,bytes32 compatPolicyHash,uint64 until,uint256 nonce,uint256 deadline)`
+- `CheckIn`:
+  - `CheckIn(bytes32 observedRoot,bytes32 observedUriHash,bytes32 observedPolicyHash,uint256 nonce,uint256 deadline)`
+- `ReportIncident`:
+  - `ReportIncident(bytes32 incidentHash,uint256 nonce,uint256 deadline)`
+- `ActivateUpgrade`:
+  - `ActivateUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint256 proposalNonce,uint64 createdAt,uint64 ttlSec,uint256 deadline)`
+- `CancelUpgrade`:
+  - `CancelUpgrade(bytes32 root,bytes32 uriHash,bytes32 policyHash,uint256 proposalNonce,uint64 createdAt,uint64 ttlSec,uint256 deadline)`
+
+Role identifiers used by `AcceptAuthority` are `keccak256(...)` of:
+- `root_authority`
+- `upgrade_authority`
+- `emergency_authority`
+- `reporter_authority`
 
 Authorized monitoring / incidents (optional, for relayers):
 - `checkInAuthorized(...)`:

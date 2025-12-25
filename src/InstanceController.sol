@@ -62,6 +62,95 @@ contract InstanceController {
     uint64 public constant MAX_UPGRADE_TTL_SEC = 30 days;
     uint64 public constant MAX_COMPATIBILITY_WINDOW_SEC = 30 days;
 
+    error NotRootAuthority();
+    error NotUpgradeAuthority();
+    error NotEmergencyAuthority();
+    error NotEmergencyOrRootAuthority();
+    error NotReporterAuthority();
+    error NotRootOrUpgradeAuthority();
+
+    error AlreadyInitialized();
+    error ZeroRootAuthority();
+    error ZeroUpgradeAuthority();
+    error ZeroEmergencyAuthority();
+    error ZeroReporterAuthority();
+    error ZeroGenesisRoot();
+    error RegistryNotContract();
+    error RegistryMissingGet();
+    error RegistryMissingGetByRoot();
+    error RootNotTrusted();
+    error GenesisRootNotTrusted();
+    error ActiveRootNotTrusted();
+    error PendingRootNotTrusted();
+    error CompatRootNotTrusted();
+
+    error Expired();
+    error NoOp();
+    error PausedMismatch();
+    error InvalidPauseSignature();
+    error EmergencyCannotUnpause();
+
+    error NoPendingRootAuthority();
+    error NoPendingUpgradeAuthority();
+    error NoPendingEmergencyAuthority();
+    error NoPendingReporterAuthority();
+    error NotPendingRootAuthority();
+    error NotPendingUpgradeAuthority();
+    error NotPendingEmergencyAuthority();
+    error NotPendingReporterAuthority();
+    error PendingAuthorityMismatch();
+    error InvalidPendingAuthoritySignature();
+
+    error ReleaseRegistryPointerLocked();
+    error NoReleaseRegistry();
+    error ExpectedComponentSet();
+    error ExpectedComponentLocked();
+    error ZeroComponentId();
+    error ComponentMismatch();
+    error RootUnknown();
+
+    error DelayLocked();
+    error DelayTooLarge();
+    error DelayZero();
+
+    error EmergencyUnpausePolicyIsLocked();
+
+    error WindowLocked();
+    error WindowTooLarge();
+    error NoCompatibilityState();
+    error CompatibilityExpired();
+
+    error KeyZero();
+    error ValueZero();
+    error AttestationKeyIsLocked();
+    error AttestationMismatch();
+    error AttestationAlreadyCleared();
+    error NoAttestation();
+
+    error AutoPauseLocked();
+    error ReporterNotSet();
+    error InvalidReporterSignature();
+
+    error IncidentHashZero();
+    error NotIncidentReporter();
+    error InvalidIncidentSignature();
+
+    error RootZero();
+    error TtlZero();
+    error TtlTooLarge();
+    error VersionZero();
+    error ReleaseNotFound();
+    error NoPendingUpgrade();
+    error PendingMismatch();
+    error InvalidRootSignature();
+    error UpgradeTimelocked();
+    error UpgradeExpired();
+
+    error BadSignatureLength();
+    error BadV();
+    error BadS();
+    error BadSignature();
+
     struct UpgradeProposal {
         bytes32 root;
         bytes32 uriHash;
@@ -184,39 +273,57 @@ contract InstanceController {
     event AuthoritySignatureConsumed(address indexed authority, bytes32 indexed digest, address indexed relayer);
 
     modifier onlyRootAuthority() {
-        require(msg.sender == rootAuthority, "InstanceController: not root authority");
+        _requireRootAuthority();
         _;
     }
 
     modifier onlyUpgradeAuthority() {
-        require(msg.sender == upgradeAuthority, "InstanceController: not upgrade authority");
+        _requireUpgradeAuthority();
         _;
     }
 
     modifier onlyEmergencyAuthority() {
-        require(msg.sender == emergencyAuthority, "InstanceController: not emergency authority");
+        _requireEmergencyAuthority();
         _;
     }
 
     modifier onlyEmergencyOrRootAuthority() {
-        require(
-            msg.sender == emergencyAuthority || msg.sender == rootAuthority,
-            "InstanceController: not emergency/root authority"
-        );
+        _requireEmergencyOrRootAuthority();
         _;
     }
 
     modifier onlyReporterAuthority() {
-        require(msg.sender == reporterAuthority, "InstanceController: not reporter authority");
+        _requireReporterAuthority();
         _;
     }
 
     modifier onlyRootOrUpgradeAuthority() {
-        require(
-            msg.sender == rootAuthority || msg.sender == upgradeAuthority,
-            "InstanceController: not root/upgrade authority"
-        );
+        _requireRootOrUpgradeAuthority();
         _;
+    }
+
+    function _requireRootAuthority() private view {
+        if (msg.sender != rootAuthority) revert NotRootAuthority();
+    }
+
+    function _requireUpgradeAuthority() private view {
+        if (msg.sender != upgradeAuthority) revert NotUpgradeAuthority();
+    }
+
+    function _requireEmergencyAuthority() private view {
+        if (msg.sender != emergencyAuthority) revert NotEmergencyAuthority();
+    }
+
+    function _requireEmergencyOrRootAuthority() private view {
+        if (msg.sender != emergencyAuthority && msg.sender != rootAuthority) revert NotEmergencyOrRootAuthority();
+    }
+
+    function _requireReporterAuthority() private view {
+        if (msg.sender != reporterAuthority) revert NotReporterAuthority();
+    }
+
+    function _requireRootOrUpgradeAuthority() private view {
+        if (msg.sender != rootAuthority && msg.sender != upgradeAuthority) revert NotRootOrUpgradeAuthority();
     }
 
     /// @dev Lock the implementation instance (clones do not execute constructors).
@@ -234,11 +341,11 @@ contract InstanceController {
         bytes32 genesisUriHash,
         bytes32 genesisPolicyHash
     ) external {
-        require(rootAuthority == address(0), "InstanceController: already initialized");
-        require(rootAuthority_ != address(0), "InstanceController: root=0");
-        require(upgradeAuthority_ != address(0), "InstanceController: upgrade=0");
-        require(emergencyAuthority_ != address(0), "InstanceController: emergency=0");
-        require(genesisRoot != bytes32(0), "InstanceController: genesisRoot=0");
+        if (rootAuthority != address(0)) revert AlreadyInitialized();
+        if (rootAuthority_ == address(0)) revert ZeroRootAuthority();
+        if (upgradeAuthority_ == address(0)) revert ZeroUpgradeAuthority();
+        if (emergencyAuthority_ == address(0)) revert ZeroEmergencyAuthority();
+        if (genesisRoot == bytes32(0)) revert ZeroGenesisRoot();
 
         factory = msg.sender;
         rootAuthority = rootAuthority_;
@@ -246,11 +353,8 @@ contract InstanceController {
         emergencyAuthority = emergencyAuthority_;
 
         if (releaseRegistry_ != address(0)) {
-            require(releaseRegistry_.code.length != 0, "InstanceController: registry not contract");
-            require(
-                IReleaseRegistry(releaseRegistry_).isTrustedRoot(genesisRoot),
-                "InstanceController: genesis root not trusted"
-            );
+            if (releaseRegistry_.code.length == 0) revert RegistryNotContract();
+            if (!IReleaseRegistry(releaseRegistry_).isTrustedRoot(genesisRoot)) revert GenesisRootNotTrusted();
             releaseRegistry = releaseRegistry_;
         }
 
@@ -283,41 +387,36 @@ contract InstanceController {
             return;
         }
 
-        require(msg.sender == emergencyAuthority, "InstanceController: not emergency/root authority");
-        require(emergencyCanUnpause, "InstanceController: emergency cannot unpause");
+        if (msg.sender != emergencyAuthority) revert NotEmergencyOrRootAuthority();
+        if (!emergencyCanUnpause) revert EmergencyCannotUnpause();
         if (paused) {
             _setPaused(msg.sender, false);
         }
     }
 
-    function hashSetPaused(bool expectedPaused, bool newPaused, uint256 deadline) external view returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(SET_PAUSED_TYPEHASH, expectedPaused, newPaused, pauseNonce, deadline));
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
-    }
-
     function setPausedAuthorized(bool expectedPaused, bool newPaused, uint256 deadline, bytes calldata signature)
         external
     {
-        require(block.timestamp <= deadline, "InstanceController: expired");
-        require(expectedPaused != newPaused, "InstanceController: no-op");
-        require(paused == expectedPaused, "InstanceController: paused mismatch");
+        if (block.timestamp > deadline) revert Expired();
+        if (expectedPaused == newPaused) revert NoOp();
+        if (paused != expectedPaused) revert PausedMismatch();
 
         bytes32 structHash = keccak256(abi.encode(SET_PAUSED_TYPEHASH, expectedPaused, newPaused, pauseNonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
 
         address signer = _resolvePauseSigner(digest, signature);
-        require(signer != address(0), "InstanceController: invalid pause signature");
+        if (signer == address(0)) revert InvalidPauseSignature();
         emit AuthoritySignatureConsumed(signer, digest, msg.sender);
 
         if (!newPaused && !emergencyCanUnpause) {
-            require(signer == rootAuthority, "InstanceController: emergency cannot unpause");
+            if (signer != rootAuthority) revert EmergencyCannotUnpause();
         }
 
         _setPaused(signer, newPaused);
     }
 
     function startRootAuthorityTransfer(address newValue) external onlyRootAuthority {
-        require(newValue != address(0), "InstanceController: root=0");
+        if (newValue == address(0)) revert ZeroRootAuthority();
         rootAuthorityTransferNonce += 1;
         pendingRootAuthority = newValue;
         emit RootAuthorityTransferStarted(rootAuthority, newValue);
@@ -325,42 +424,33 @@ contract InstanceController {
 
     function cancelRootAuthorityTransfer() external onlyRootAuthority {
         address pendingValue = pendingRootAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending root");
+        if (pendingValue == address(0)) revert NoPendingRootAuthority();
         pendingRootAuthority = address(0);
         emit RootAuthorityTransferCanceled(rootAuthority, pendingValue);
     }
 
     function acceptRootAuthority() external {
         address pendingValue = pendingRootAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending root");
-        require(msg.sender == pendingValue, "InstanceController: not pending root");
+        if (pendingValue == address(0)) revert NoPendingRootAuthority();
+        if (msg.sender != pendingValue) revert NotPendingRootAuthority();
         address previousValue = rootAuthority;
         rootAuthority = pendingValue;
         pendingRootAuthority = address(0);
         emit RootAuthorityChanged(previousValue, pendingValue);
     }
 
-    function hashAcceptRootAuthority(address expectedNewAuthority, uint256 deadline) external view returns (bytes32) {
-        address pendingValue = pendingRootAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending root");
-        require(pendingValue == expectedNewAuthority, "InstanceController: pending root mismatch");
-        return _hashAcceptAuthority(ROLE_ROOT_AUTHORITY, expectedNewAuthority, rootAuthorityTransferNonce, deadline);
-    }
-
     function acceptRootAuthorityAuthorized(address expectedNewAuthority, uint256 deadline, bytes calldata signature)
         external
     {
-        require(block.timestamp <= deadline, "InstanceController: expired");
+        if (block.timestamp > deadline) revert Expired();
 
         address pendingValue = pendingRootAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending root");
-        require(pendingValue == expectedNewAuthority, "InstanceController: pending root mismatch");
+        if (pendingValue == address(0)) revert NoPendingRootAuthority();
+        if (pendingValue != expectedNewAuthority) revert PendingAuthorityMismatch();
 
         bytes32 digest =
             _hashAcceptAuthority(ROLE_ROOT_AUTHORITY, expectedNewAuthority, rootAuthorityTransferNonce, deadline);
-        require(
-            _isValidSignatureNow(pendingValue, digest, signature), "InstanceController: invalid pending root signature"
-        );
+        if (!_isValidSignatureNow(pendingValue, digest, signature)) revert InvalidPendingAuthoritySignature();
         emit AuthoritySignatureConsumed(pendingValue, digest, msg.sender);
 
         address previousValue = rootAuthority;
@@ -370,7 +460,7 @@ contract InstanceController {
     }
 
     function startUpgradeAuthorityTransfer(address newValue) external onlyRootAuthority {
-        require(newValue != address(0), "InstanceController: upgrade=0");
+        if (newValue == address(0)) revert ZeroUpgradeAuthority();
         upgradeAuthorityTransferNonce += 1;
         pendingUpgradeAuthority = newValue;
         emit UpgradeAuthorityTransferStarted(upgradeAuthority, newValue);
@@ -378,48 +468,33 @@ contract InstanceController {
 
     function cancelUpgradeAuthorityTransfer() external onlyRootAuthority {
         address pendingValue = pendingUpgradeAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending upgrade");
+        if (pendingValue == address(0)) revert NoPendingUpgradeAuthority();
         pendingUpgradeAuthority = address(0);
         emit UpgradeAuthorityTransferCanceled(upgradeAuthority, pendingValue);
     }
 
     function acceptUpgradeAuthority() external {
         address pendingValue = pendingUpgradeAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending upgrade");
-        require(msg.sender == pendingValue, "InstanceController: not pending upgrade");
+        if (pendingValue == address(0)) revert NoPendingUpgradeAuthority();
+        if (msg.sender != pendingValue) revert NotPendingUpgradeAuthority();
         address previousValue = upgradeAuthority;
         upgradeAuthority = pendingValue;
         pendingUpgradeAuthority = address(0);
         emit UpgradeAuthorityChanged(previousValue, pendingValue);
     }
 
-    function hashAcceptUpgradeAuthority(address expectedNewAuthority, uint256 deadline)
-        external
-        view
-        returns (bytes32)
-    {
-        address pendingValue = pendingUpgradeAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending upgrade");
-        require(pendingValue == expectedNewAuthority, "InstanceController: pending upgrade mismatch");
-        return
-            _hashAcceptAuthority(ROLE_UPGRADE_AUTHORITY, expectedNewAuthority, upgradeAuthorityTransferNonce, deadline);
-    }
-
     function acceptUpgradeAuthorityAuthorized(address expectedNewAuthority, uint256 deadline, bytes calldata signature)
         external
     {
-        require(block.timestamp <= deadline, "InstanceController: expired");
+        if (block.timestamp > deadline) revert Expired();
 
         address pendingValue = pendingUpgradeAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending upgrade");
-        require(pendingValue == expectedNewAuthority, "InstanceController: pending upgrade mismatch");
+        if (pendingValue == address(0)) revert NoPendingUpgradeAuthority();
+        if (pendingValue != expectedNewAuthority) revert PendingAuthorityMismatch();
 
         bytes32 digest =
             _hashAcceptAuthority(ROLE_UPGRADE_AUTHORITY, expectedNewAuthority, upgradeAuthorityTransferNonce, deadline);
-        require(
-            _isValidSignatureNow(pendingValue, digest, signature),
-            "InstanceController: invalid pending upgrade signature"
-        );
+        if (!_isValidSignatureNow(pendingValue, digest, signature)) revert InvalidPendingAuthoritySignature();
         emit AuthoritySignatureConsumed(pendingValue, digest, msg.sender);
 
         address previousValue = upgradeAuthority;
@@ -429,7 +504,7 @@ contract InstanceController {
     }
 
     function startEmergencyAuthorityTransfer(address newValue) external onlyRootAuthority {
-        require(newValue != address(0), "InstanceController: emergency=0");
+        if (newValue == address(0)) revert ZeroEmergencyAuthority();
         emergencyAuthorityTransferNonce += 1;
         pendingEmergencyAuthority = newValue;
         emit EmergencyAuthorityTransferStarted(emergencyAuthority, newValue);
@@ -437,33 +512,19 @@ contract InstanceController {
 
     function cancelEmergencyAuthorityTransfer() external onlyRootAuthority {
         address pendingValue = pendingEmergencyAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending emergency");
+        if (pendingValue == address(0)) revert NoPendingEmergencyAuthority();
         pendingEmergencyAuthority = address(0);
         emit EmergencyAuthorityTransferCanceled(emergencyAuthority, pendingValue);
     }
 
     function acceptEmergencyAuthority() external {
         address pendingValue = pendingEmergencyAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending emergency");
-        require(msg.sender == pendingValue, "InstanceController: not pending emergency");
+        if (pendingValue == address(0)) revert NoPendingEmergencyAuthority();
+        if (msg.sender != pendingValue) revert NotPendingEmergencyAuthority();
         address previousValue = emergencyAuthority;
         emergencyAuthority = pendingValue;
         pendingEmergencyAuthority = address(0);
         emit EmergencyAuthorityChanged(previousValue, pendingValue);
-    }
-
-    function hashAcceptEmergencyAuthority(address expectedNewAuthority, uint256 deadline)
-        external
-        view
-        returns (bytes32)
-    {
-        address pendingValue = pendingEmergencyAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending emergency");
-        require(pendingValue == expectedNewAuthority, "InstanceController: pending emergency mismatch");
-        return
-            _hashAcceptAuthority(
-                ROLE_EMERGENCY_AUTHORITY, expectedNewAuthority, emergencyAuthorityTransferNonce, deadline
-            );
     }
 
     function acceptEmergencyAuthorityAuthorized(
@@ -471,19 +532,16 @@ contract InstanceController {
         uint256 deadline,
         bytes calldata signature
     ) external {
-        require(block.timestamp <= deadline, "InstanceController: expired");
+        if (block.timestamp > deadline) revert Expired();
 
         address pendingValue = pendingEmergencyAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending emergency");
-        require(pendingValue == expectedNewAuthority, "InstanceController: pending emergency mismatch");
+        if (pendingValue == address(0)) revert NoPendingEmergencyAuthority();
+        if (pendingValue != expectedNewAuthority) revert PendingAuthorityMismatch();
 
         bytes32 digest = _hashAcceptAuthority(
             ROLE_EMERGENCY_AUTHORITY, expectedNewAuthority, emergencyAuthorityTransferNonce, deadline
         );
-        require(
-            _isValidSignatureNow(pendingValue, digest, signature),
-            "InstanceController: invalid pending emergency signature"
-        );
+        if (!_isValidSignatureNow(pendingValue, digest, signature)) revert InvalidPendingAuthoritySignature();
         emit AuthoritySignatureConsumed(pendingValue, digest, msg.sender);
 
         address previousValue = emergencyAuthority;
@@ -493,28 +551,24 @@ contract InstanceController {
     }
 
     function setReleaseRegistry(address newValue) external onlyRootAuthority {
-        require(!releaseRegistryLocked, "InstanceController: registry locked");
+        if (releaseRegistryLocked) revert ReleaseRegistryPointerLocked();
 
         if (newValue == address(0)) {
-            require(expectedComponentId == bytes32(0), "InstanceController: expected component set");
+            if (expectedComponentId != bytes32(0)) revert ExpectedComponentSet();
         }
 
         if (newValue != address(0)) {
-            require(newValue.code.length != 0, "InstanceController: registry not contract");
-            require(IReleaseRegistry(newValue).isTrustedRoot(activeRoot), "InstanceController: active root not trusted");
+            if (newValue.code.length == 0) revert RegistryNotContract();
+            if (!IReleaseRegistry(newValue).isTrustedRoot(activeRoot)) revert ActiveRootNotTrusted();
 
             UpgradeProposal memory p = pendingUpgrade;
             if (p.root != bytes32(0)) {
-                require(
-                    IReleaseRegistry(newValue).isTrustedRoot(p.root), "InstanceController: pending root not trusted"
-                );
+                if (!IReleaseRegistry(newValue).isTrustedRoot(p.root)) revert PendingRootNotTrusted();
             }
 
             CompatibilityState memory compat = compatibilityState;
             if (compat.root != bytes32(0) && block.timestamp <= compat.until) {
-                require(
-                    IReleaseRegistry(newValue).isTrustedRoot(compat.root), "InstanceController: compat root not trusted"
-                );
+                if (!IReleaseRegistry(newValue).isTrustedRoot(compat.root)) revert CompatRootNotTrusted();
             }
 
             bytes32 expected = expectedComponentId;
@@ -534,19 +588,19 @@ contract InstanceController {
     }
 
     function lockReleaseRegistry() external onlyRootAuthority {
-        require(!releaseRegistryLocked, "InstanceController: registry locked");
+        if (releaseRegistryLocked) revert ReleaseRegistryPointerLocked();
         address registry = releaseRegistry;
-        require(registry != address(0), "InstanceController: no registry");
+        if (registry == address(0)) revert NoReleaseRegistry();
         releaseRegistryLocked = true;
         emit ReleaseRegistryLocked(registry);
     }
 
     function setExpectedComponentId(bytes32 newValue) external onlyRootAuthority {
-        require(!expectedComponentIdLocked, "InstanceController: expected component locked");
+        if (expectedComponentIdLocked) revert ExpectedComponentLocked();
 
         if (newValue != bytes32(0)) {
             address registry = releaseRegistry;
-            require(registry != address(0), "InstanceController: no registry");
+            if (registry == address(0)) revert NoReleaseRegistry();
 
             _requireRootComponent(registry, activeRoot, newValue);
 
@@ -567,15 +621,15 @@ contract InstanceController {
     }
 
     function lockExpectedComponentId() external onlyRootAuthority {
-        require(!expectedComponentIdLocked, "InstanceController: expected component locked");
+        if (expectedComponentIdLocked) revert ExpectedComponentLocked();
         bytes32 componentId = expectedComponentId;
-        require(componentId != bytes32(0), "InstanceController: componentId=0");
+        if (componentId == bytes32(0)) revert ZeroComponentId();
         expectedComponentIdLocked = true;
         emit ExpectedComponentIdLocked(componentId);
     }
 
     function startReporterAuthorityTransfer(address newValue) external onlyRootAuthority {
-        require(newValue != address(0), "InstanceController: reporter=0");
+        if (newValue == address(0)) revert ZeroReporterAuthority();
         reporterAuthorityTransferNonce += 1;
         pendingReporterAuthority = newValue;
         emit ReporterAuthorityTransferStarted(reporterAuthority, newValue);
@@ -583,51 +637,34 @@ contract InstanceController {
 
     function cancelReporterAuthorityTransfer() external onlyRootAuthority {
         address pendingValue = pendingReporterAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending reporter");
+        if (pendingValue == address(0)) revert NoPendingReporterAuthority();
         pendingReporterAuthority = address(0);
         emit ReporterAuthorityTransferCanceled(reporterAuthority, pendingValue);
     }
 
     function acceptReporterAuthority() external {
         address pendingValue = pendingReporterAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending reporter");
-        require(msg.sender == pendingValue, "InstanceController: not pending reporter");
+        if (pendingValue == address(0)) revert NoPendingReporterAuthority();
+        if (msg.sender != pendingValue) revert NotPendingReporterAuthority();
         address previousValue = reporterAuthority;
         reporterAuthority = pendingValue;
         pendingReporterAuthority = address(0);
         emit ReporterAuthorityChanged(previousValue, pendingValue);
     }
 
-    function hashAcceptReporterAuthority(address expectedNewAuthority, uint256 deadline)
-        external
-        view
-        returns (bytes32)
-    {
-        address pendingValue = pendingReporterAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending reporter");
-        require(pendingValue == expectedNewAuthority, "InstanceController: pending reporter mismatch");
-        return
-            _hashAcceptAuthority(
-                ROLE_REPORTER_AUTHORITY, expectedNewAuthority, reporterAuthorityTransferNonce, deadline
-            );
-    }
-
     function acceptReporterAuthorityAuthorized(address expectedNewAuthority, uint256 deadline, bytes calldata signature)
         external
     {
-        require(block.timestamp <= deadline, "InstanceController: expired");
+        if (block.timestamp > deadline) revert Expired();
 
         address pendingValue = pendingReporterAuthority;
-        require(pendingValue != address(0), "InstanceController: no pending reporter");
-        require(pendingValue == expectedNewAuthority, "InstanceController: pending reporter mismatch");
+        if (pendingValue == address(0)) revert NoPendingReporterAuthority();
+        if (pendingValue != expectedNewAuthority) revert PendingAuthorityMismatch();
 
         bytes32 digest = _hashAcceptAuthority(
             ROLE_REPORTER_AUTHORITY, expectedNewAuthority, reporterAuthorityTransferNonce, deadline
         );
-        require(
-            _isValidSignatureNow(pendingValue, digest, signature),
-            "InstanceController: invalid pending reporter signature"
-        );
+        if (!_isValidSignatureNow(pendingValue, digest, signature)) revert InvalidPendingAuthoritySignature();
         emit AuthoritySignatureConsumed(pendingValue, digest, msg.sender);
 
         address previousValue = reporterAuthority;
@@ -644,50 +681,50 @@ contract InstanceController {
     }
 
     function setMinUpgradeDelaySec(uint64 newValue) external onlyRootAuthority {
-        require(!minUpgradeDelayLocked, "InstanceController: delay locked");
-        require(newValue <= MAX_UPGRADE_DELAY_SEC, "InstanceController: delay too large");
+        if (minUpgradeDelayLocked) revert DelayLocked();
+        if (newValue > MAX_UPGRADE_DELAY_SEC) revert DelayTooLarge();
         uint64 previousValue = minUpgradeDelaySec;
         minUpgradeDelaySec = newValue;
         emit MinUpgradeDelayChanged(previousValue, newValue);
     }
 
     function lockMinUpgradeDelay() external onlyRootAuthority {
-        require(!minUpgradeDelayLocked, "InstanceController: delay locked");
-        require(minUpgradeDelaySec != 0, "InstanceController: delay=0");
+        if (minUpgradeDelayLocked) revert DelayLocked();
+        if (minUpgradeDelaySec == 0) revert DelayZero();
         minUpgradeDelayLocked = true;
         emit MinUpgradeDelayLocked(minUpgradeDelaySec);
     }
 
     function lockEmergencyCanUnpause() external onlyRootAuthority {
-        require(!emergencyCanUnpauseLocked, "InstanceController: unpause policy locked");
+        if (emergencyCanUnpauseLocked) revert EmergencyUnpausePolicyIsLocked();
         emergencyCanUnpauseLocked = true;
         emit EmergencyUnpausePolicyLocked(emergencyCanUnpause);
     }
 
     function setEmergencyCanUnpause(bool newValue) external onlyRootAuthority {
-        require(!emergencyCanUnpauseLocked, "InstanceController: unpause policy locked");
+        if (emergencyCanUnpauseLocked) revert EmergencyUnpausePolicyIsLocked();
         bool previousValue = emergencyCanUnpause;
         emergencyCanUnpause = newValue;
         emit EmergencyUnpausePolicyChanged(previousValue, newValue);
     }
 
     function setCompatibilityWindowSec(uint64 newValue) external onlyRootAuthority {
-        require(!compatibilityWindowLocked, "InstanceController: window locked");
-        require(newValue <= MAX_COMPATIBILITY_WINDOW_SEC, "InstanceController: window too large");
+        if (compatibilityWindowLocked) revert WindowLocked();
+        if (newValue > MAX_COMPATIBILITY_WINDOW_SEC) revert WindowTooLarge();
         uint64 previousValue = compatibilityWindowSec;
         compatibilityWindowSec = newValue;
         emit CompatibilityWindowChanged(previousValue, newValue);
     }
 
     function lockCompatibilityWindow() external onlyRootAuthority {
-        require(!compatibilityWindowLocked, "InstanceController: window locked");
+        if (compatibilityWindowLocked) revert WindowLocked();
         compatibilityWindowLocked = true;
         emit CompatibilityWindowLocked(compatibilityWindowSec);
     }
 
     function clearCompatibilityState() external onlyRootAuthority {
         CompatibilityState memory compat = compatibilityState;
-        require(compat.root != bytes32(0), "InstanceController: no compat state");
+        if (compat.root == bytes32(0)) revert NoCompatibilityState();
         delete compatibilityState;
         emit CompatibilityStateCleared(compat.root, compat.uriHash, compat.policyHash);
     }
@@ -696,36 +733,17 @@ contract InstanceController {
     /// @dev This bypasses timelock/TTL because it rolls back to the last known-good state captured by the controller.
     function rollbackToCompatibilityState() external onlyRootAuthority {
         CompatibilityState memory compat = compatibilityState;
-        require(compat.root != bytes32(0), "InstanceController: no compat state");
-        require(block.timestamp <= compat.until, "InstanceController: compat expired");
+        if (compat.root == bytes32(0)) revert NoCompatibilityState();
+        if (block.timestamp > compat.until) revert CompatibilityExpired();
         _rollbackToCompatibility(compat);
     }
 
-    function hashRollbackToCompatibilityState(uint256 deadline) external view returns (bytes32) {
-        CompatibilityState memory compat = compatibilityState;
-        require(compat.root != bytes32(0), "InstanceController: no compat state");
-        require(block.timestamp <= compat.until, "InstanceController: compat expired");
-
-        bytes32 structHash = keccak256(
-            abi.encode(
-                ROLLBACK_COMPATIBILITY_TYPEHASH,
-                compat.root,
-                compat.uriHash,
-                compat.policyHash,
-                compat.until,
-                rollbackNonce,
-                deadline
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
-    }
-
     function rollbackToCompatibilityStateAuthorized(uint256 deadline, bytes calldata signature) external {
-        require(block.timestamp <= deadline, "InstanceController: expired");
+        if (block.timestamp > deadline) revert Expired();
 
         CompatibilityState memory compat = compatibilityState;
-        require(compat.root != bytes32(0), "InstanceController: no compat state");
-        require(block.timestamp <= compat.until, "InstanceController: compat expired");
+        if (compat.root == bytes32(0)) revert NoCompatibilityState();
+        if (block.timestamp > compat.until) revert CompatibilityExpired();
 
         bytes32 structHash = keccak256(
             abi.encode(
@@ -740,7 +758,7 @@ contract InstanceController {
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
 
-        require(_isValidSignatureNow(rootAuthority, digest, signature), "InstanceController: invalid root signature");
+        if (!_isValidSignatureNow(rootAuthority, digest, signature)) revert InvalidRootSignature();
         emit AuthoritySignatureConsumed(rootAuthority, digest, msg.sender);
 
         _rollbackToCompatibility(compat);
@@ -749,12 +767,12 @@ contract InstanceController {
     function _rollbackToCompatibility(CompatibilityState memory compat) private {
         address registry = releaseRegistry;
         if (registry != address(0)) {
-            require(IReleaseRegistry(registry).isTrustedRoot(compat.root), "InstanceController: root not trusted");
+            if (!IReleaseRegistry(registry).isTrustedRoot(compat.root)) revert RootNotTrusted();
         }
 
         bytes32 expected = expectedComponentId;
         if (expected != bytes32(0)) {
-            require(registry != address(0), "InstanceController: no registry");
+            if (registry == address(0)) revert NoReleaseRegistry();
             _requireRootComponent(registry, compat.root, expected);
         }
 
@@ -773,8 +791,8 @@ contract InstanceController {
     }
 
     function setAttestation(bytes32 key, bytes32 value) external onlyRootAuthority {
-        require(key != bytes32(0), "InstanceController: key=0");
-        require(!attestationLocked[key], "InstanceController: attestation locked");
+        if (key == bytes32(0)) revert KeyZero();
+        if (attestationLocked[key]) revert AttestationKeyIsLocked();
 
         bytes32 previousValue = attestations[key];
         attestations[key] = value;
@@ -785,9 +803,9 @@ contract InstanceController {
     }
 
     function setAttestationExpected(bytes32 key, bytes32 expectedPrevious, bytes32 value) external onlyRootAuthority {
-        require(key != bytes32(0), "InstanceController: key=0");
-        require(!attestationLocked[key], "InstanceController: attestation locked");
-        require(attestations[key] == expectedPrevious, "InstanceController: attestation mismatch");
+        if (key == bytes32(0)) revert KeyZero();
+        if (attestationLocked[key]) revert AttestationKeyIsLocked();
+        if (attestations[key] != expectedPrevious) revert AttestationMismatch();
 
         bytes32 previousValue = attestations[key];
         attestations[key] = value;
@@ -798,10 +816,10 @@ contract InstanceController {
     }
 
     function clearAttestation(bytes32 key) external onlyRootAuthority {
-        require(key != bytes32(0), "InstanceController: key=0");
-        require(!attestationLocked[key], "InstanceController: attestation locked");
+        if (key == bytes32(0)) revert KeyZero();
+        if (attestationLocked[key]) revert AttestationKeyIsLocked();
         bytes32 previousValue = attestations[key];
-        require(previousValue != bytes32(0), "InstanceController: attestation already cleared");
+        if (previousValue == bytes32(0)) revert AttestationAlreadyCleared();
 
         attestations[key] = bytes32(0);
         uint64 at = uint64(block.timestamp);
@@ -810,9 +828,9 @@ contract InstanceController {
     }
 
     function setAttestationAndLock(bytes32 key, bytes32 value) external onlyRootAuthority {
-        require(key != bytes32(0), "InstanceController: key=0");
-        require(value != bytes32(0), "InstanceController: value=0");
-        require(!attestationLocked[key], "InstanceController: attestation locked");
+        if (key == bytes32(0)) revert KeyZero();
+        if (value == bytes32(0)) revert ValueZero();
+        if (attestationLocked[key]) revert AttestationKeyIsLocked();
 
         bytes32 previousValue = attestations[key];
         attestations[key] = value;
@@ -826,11 +844,11 @@ contract InstanceController {
     }
 
     function lockAttestationKey(bytes32 key) external onlyRootAuthority {
-        require(key != bytes32(0), "InstanceController: key=0");
-        require(!attestationLocked[key], "InstanceController: attestation locked");
+        if (key == bytes32(0)) revert KeyZero();
+        if (attestationLocked[key]) revert AttestationKeyIsLocked();
 
         bytes32 value = attestations[key];
-        require(value != bytes32(0), "InstanceController: no attestation");
+        if (value == bytes32(0)) revert NoAttestation();
 
         uint64 at = uint64(block.timestamp);
         attestationLocked[key] = true;
@@ -838,14 +856,14 @@ contract InstanceController {
     }
 
     function setAutoPauseOnBadCheckIn(bool newValue) external onlyRootAuthority {
-        require(!autoPauseOnBadCheckInLocked, "InstanceController: auto-pause locked");
+        if (autoPauseOnBadCheckInLocked) revert AutoPauseLocked();
         bool previousValue = autoPauseOnBadCheckIn;
         autoPauseOnBadCheckIn = newValue;
         emit AutoPauseOnBadCheckInChanged(previousValue, newValue);
     }
 
     function lockAutoPauseOnBadCheckIn() external onlyRootAuthority {
-        require(!autoPauseOnBadCheckInLocked, "InstanceController: auto-pause locked");
+        if (autoPauseOnBadCheckInLocked) revert AutoPauseLocked();
         autoPauseOnBadCheckInLocked = true;
         emit AutoPauseOnBadCheckInLocked(autoPauseOnBadCheckIn);
     }
@@ -880,17 +898,6 @@ contract InstanceController {
         _checkIn(msg.sender, observedRoot, observedUriHash, observedPolicyHash);
     }
 
-    function hashCheckIn(bytes32 observedRoot, bytes32 observedUriHash, bytes32 observedPolicyHash, uint256 deadline)
-        external
-        view
-        returns (bytes32)
-    {
-        bytes32 structHash = keccak256(
-            abi.encode(CHECKIN_TYPEHASH, observedRoot, observedUriHash, observedPolicyHash, reporterNonce, deadline)
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
-    }
-
     function checkInAuthorized(
         bytes32 observedRoot,
         bytes32 observedUriHash,
@@ -898,16 +905,16 @@ contract InstanceController {
         uint256 deadline,
         bytes calldata signature
     ) external {
-        require(block.timestamp <= deadline, "InstanceController: expired");
+        if (block.timestamp > deadline) revert Expired();
         address reporter = reporterAuthority;
-        require(reporter != address(0), "InstanceController: reporter not set");
+        if (reporter == address(0)) revert ReporterNotSet();
 
         bytes32 structHash = keccak256(
             abi.encode(CHECKIN_TYPEHASH, observedRoot, observedUriHash, observedPolicyHash, reporterNonce, deadline)
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
 
-        require(_isValidSignatureNow(reporter, digest, signature), "InstanceController: invalid reporter signature");
+        if (!_isValidSignatureNow(reporter, digest, signature)) revert InvalidReporterSignature();
         emit AuthoritySignatureConsumed(reporter, digest, msg.sender);
 
         reporterNonce += 1;
@@ -915,30 +922,24 @@ contract InstanceController {
     }
 
     function reportIncident(bytes32 incidentHash) external {
-        require(incidentHash != bytes32(0), "InstanceController: incidentHash=0");
-        require(
-            msg.sender == rootAuthority || msg.sender == emergencyAuthority || msg.sender == reporterAuthority,
-            "InstanceController: not incident reporter"
-        );
+        if (incidentHash == bytes32(0)) revert IncidentHashZero();
+        if (msg.sender != rootAuthority && msg.sender != emergencyAuthority && msg.sender != reporterAuthority) {
+            revert NotIncidentReporter();
+        }
 
         incidentNonce += 1;
         _reportIncident(msg.sender, incidentHash);
     }
 
-    function hashReportIncident(bytes32 incidentHash, uint256 deadline) external view returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(REPORT_INCIDENT_TYPEHASH, incidentHash, incidentNonce, deadline));
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
-    }
-
     function reportIncidentAuthorized(bytes32 incidentHash, uint256 deadline, bytes calldata signature) external {
-        require(block.timestamp <= deadline, "InstanceController: expired");
-        require(incidentHash != bytes32(0), "InstanceController: incidentHash=0");
+        if (block.timestamp > deadline) revert Expired();
+        if (incidentHash == bytes32(0)) revert IncidentHashZero();
 
         bytes32 structHash = keccak256(abi.encode(REPORT_INCIDENT_TYPEHASH, incidentHash, incidentNonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
 
         address authority = _resolveIncidentSigner(digest, signature);
-        require(authority != address(0), "InstanceController: invalid incident signature");
+        if (authority == address(0)) revert InvalidIncidentSignature();
         emit AuthoritySignatureConsumed(authority, digest, msg.sender);
 
         incidentNonce += 1;
@@ -949,18 +950,18 @@ contract InstanceController {
         external
         onlyUpgradeAuthority
     {
-        require(root != bytes32(0), "InstanceController: root=0");
-        require(ttlSec != 0, "InstanceController: ttl=0");
-        require(ttlSec <= MAX_UPGRADE_TTL_SEC, "InstanceController: ttl too large");
+        if (root == bytes32(0)) revert RootZero();
+        if (ttlSec == 0) revert TtlZero();
+        if (ttlSec > MAX_UPGRADE_TTL_SEC) revert TtlTooLarge();
 
         address registry = releaseRegistry;
         if (registry != address(0)) {
-            require(IReleaseRegistry(registry).isTrustedRoot(root), "InstanceController: root not trusted");
+            if (!IReleaseRegistry(registry).isTrustedRoot(root)) revert RootNotTrusted();
         }
 
         bytes32 expected = expectedComponentId;
         if (expected != bytes32(0)) {
-            require(registry != address(0), "InstanceController: no registry");
+            if (registry == address(0)) revert NoReleaseRegistry();
             _requireRootComponent(registry, root, expected);
         }
 
@@ -978,22 +979,22 @@ contract InstanceController {
         external
         onlyUpgradeAuthority
     {
-        require(componentId != bytes32(0), "InstanceController: componentId=0");
-        require(version != 0, "InstanceController: version=0");
-        require(ttlSec != 0, "InstanceController: ttl=0");
-        require(ttlSec <= MAX_UPGRADE_TTL_SEC, "InstanceController: ttl too large");
+        if (componentId == bytes32(0)) revert ZeroComponentId();
+        if (version == 0) revert VersionZero();
+        if (ttlSec == 0) revert TtlZero();
+        if (ttlSec > MAX_UPGRADE_TTL_SEC) revert TtlTooLarge();
 
         address registry = releaseRegistry;
-        require(registry != address(0), "InstanceController: no registry");
+        if (registry == address(0)) revert NoReleaseRegistry();
 
         bytes32 expected = expectedComponentId;
         if (expected != bytes32(0)) {
-            require(componentId == expected, "InstanceController: component mismatch");
+            if (componentId != expected) revert ComponentMismatch();
         }
 
         try IReleaseRegistryGet(registry).get(componentId, version) returns (IReleaseRegistryGet.Release memory rel) {
-            require(rel.root != bytes32(0), "InstanceController: release not found");
-            require(IReleaseRegistry(registry).isTrustedRoot(rel.root), "InstanceController: root not trusted");
+            if (rel.root == bytes32(0)) revert ReleaseNotFound();
+            if (!IReleaseRegistry(registry).isTrustedRoot(rel.root)) revert RootNotTrusted();
 
             pendingUpgradeNonce += 1;
             uint256 proposalNonce = pendingUpgradeNonce;
@@ -1008,13 +1009,13 @@ contract InstanceController {
 
             emit UpgradeProposed(rel.root, rel.uriHash, policyHash, ttlSec, proposalNonce);
         } catch {
-            revert("InstanceController: registry missing get");
+            revert RegistryMissingGet();
         }
     }
 
     function cancelUpgrade() external onlyRootOrUpgradeAuthority {
         UpgradeProposal memory upgrade = pendingUpgrade;
-        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
+        if (upgrade.root == bytes32(0)) revert NoPendingUpgrade();
         delete pendingUpgrade;
         emit UpgradeCanceled(msg.sender);
     }
@@ -1024,40 +1025,10 @@ contract InstanceController {
         onlyRootOrUpgradeAuthority
     {
         UpgradeProposal memory upgrade = pendingUpgrade;
-        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
-        require(
-            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
-            "InstanceController: pending mismatch"
-        );
+        if (upgrade.root == bytes32(0)) revert NoPendingUpgrade();
+        if (upgrade.root != root || upgrade.uriHash != uriHash || upgrade.policyHash != policyHash) revert PendingMismatch();
         delete pendingUpgrade;
         emit UpgradeCanceled(msg.sender);
-    }
-
-    function hashCancelUpgrade(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint256 deadline)
-        external
-        view
-        returns (bytes32)
-    {
-        UpgradeProposal memory upgrade = pendingUpgrade;
-        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
-        require(
-            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
-            "InstanceController: pending mismatch"
-        );
-
-        bytes32 structHash = keccak256(
-            abi.encode(
-                CANCEL_UPGRADE_TYPEHASH,
-                root,
-                uriHash,
-                policyHash,
-                pendingUpgradeNonce,
-                upgrade.createdAt,
-                upgrade.ttlSec,
-                deadline
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
     }
 
     function cancelUpgradeAuthorized(
@@ -1067,14 +1038,11 @@ contract InstanceController {
         uint256 deadline,
         bytes calldata signature
     ) external {
-        require(block.timestamp <= deadline, "InstanceController: expired");
+        if (block.timestamp > deadline) revert Expired();
 
         UpgradeProposal memory upgrade = pendingUpgrade;
-        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
-        require(
-            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
-            "InstanceController: pending mismatch"
-        );
+        if (upgrade.root == bytes32(0)) revert NoPendingUpgrade();
+        if (upgrade.root != root || upgrade.uriHash != uriHash || upgrade.policyHash != policyHash) revert PendingMismatch();
 
         bytes32 structHash = keccak256(
             abi.encode(
@@ -1090,7 +1058,7 @@ contract InstanceController {
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
 
-        require(_isValidSignatureNow(rootAuthority, digest, signature), "InstanceController: invalid root signature");
+        if (!_isValidSignatureNow(rootAuthority, digest, signature)) revert InvalidRootSignature();
         emit AuthoritySignatureConsumed(rootAuthority, digest, msg.sender);
 
         delete pendingUpgrade;
@@ -1104,39 +1072,9 @@ contract InstanceController {
 
     function activateUpgradeExpected(bytes32 root, bytes32 uriHash, bytes32 policyHash) external onlyRootAuthority {
         UpgradeProposal memory upgrade = pendingUpgrade;
-        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
-        require(
-            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
-            "InstanceController: pending mismatch"
-        );
+        if (upgrade.root == bytes32(0)) revert NoPendingUpgrade();
+        if (upgrade.root != root || upgrade.uriHash != uriHash || upgrade.policyHash != policyHash) revert PendingMismatch();
         _activateUpgrade(upgrade);
-    }
-
-    function hashActivateUpgrade(bytes32 root, bytes32 uriHash, bytes32 policyHash, uint256 deadline)
-        external
-        view
-        returns (bytes32)
-    {
-        UpgradeProposal memory upgrade = pendingUpgrade;
-        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
-        require(
-            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
-            "InstanceController: pending mismatch"
-        );
-
-        bytes32 structHash = keccak256(
-            abi.encode(
-                ACTIVATE_UPGRADE_TYPEHASH,
-                root,
-                uriHash,
-                policyHash,
-                pendingUpgradeNonce,
-                upgrade.createdAt,
-                upgrade.ttlSec,
-                deadline
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
     }
 
     function activateUpgradeAuthorized(
@@ -1146,14 +1084,11 @@ contract InstanceController {
         uint256 deadline,
         bytes calldata signature
     ) external {
-        require(block.timestamp <= deadline, "InstanceController: expired");
+        if (block.timestamp > deadline) revert Expired();
 
         UpgradeProposal memory upgrade = pendingUpgrade;
-        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
-        require(
-            upgrade.root == root && upgrade.uriHash == uriHash && upgrade.policyHash == policyHash,
-            "InstanceController: pending mismatch"
-        );
+        if (upgrade.root == bytes32(0)) revert NoPendingUpgrade();
+        if (upgrade.root != root || upgrade.uriHash != uriHash || upgrade.policyHash != policyHash) revert PendingMismatch();
 
         bytes32 structHash = keccak256(
             abi.encode(
@@ -1169,31 +1104,25 @@ contract InstanceController {
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
 
-        require(_isValidSignatureNow(rootAuthority, digest, signature), "InstanceController: invalid root signature");
+        if (!_isValidSignatureNow(rootAuthority, digest, signature)) revert InvalidRootSignature();
         emit AuthoritySignatureConsumed(rootAuthority, digest, msg.sender);
 
         _activateUpgrade(upgrade);
     }
 
     function _activateUpgrade(UpgradeProposal memory upgrade) private {
-        require(upgrade.root != bytes32(0), "InstanceController: no pending upgrade");
-        require(
-            block.timestamp >= uint256(upgrade.createdAt) + uint256(minUpgradeDelaySec),
-            "InstanceController: upgrade timelocked"
-        );
-        require(
-            block.timestamp <= uint256(upgrade.createdAt) + uint256(upgrade.ttlSec),
-            "InstanceController: upgrade expired"
-        );
+        if (upgrade.root == bytes32(0)) revert NoPendingUpgrade();
+        if (block.timestamp < uint256(upgrade.createdAt) + uint256(minUpgradeDelaySec)) revert UpgradeTimelocked();
+        if (block.timestamp > uint256(upgrade.createdAt) + uint256(upgrade.ttlSec)) revert UpgradeExpired();
 
         address registry = releaseRegistry;
         if (registry != address(0)) {
-            require(IReleaseRegistry(registry).isTrustedRoot(upgrade.root), "InstanceController: root not trusted");
+            if (!IReleaseRegistry(registry).isTrustedRoot(upgrade.root)) revert RootNotTrusted();
         }
 
         bytes32 expected = expectedComponentId;
         if (expected != bytes32(0)) {
-            require(registry != address(0), "InstanceController: no registry");
+            if (registry == address(0)) revert NoReleaseRegistry();
             _requireRootComponent(registry, upgrade.root, expected);
         }
 
@@ -1244,8 +1173,7 @@ contract InstanceController {
             return _recover(digest, signature) == signer;
         }
 
-        (bool ok, bytes memory ret) =
-            signer.staticcall(abi.encodeWithSignature("isValidSignature(bytes32,bytes)", digest, signature));
+        (bool ok, bytes memory ret) = signer.staticcall(abi.encodeWithSelector(EIP1271_MAGICVALUE, digest, signature));
         return ok && ret.length >= 4 && bytes4(ret) == EIP1271_MAGICVALUE;
     }
 
@@ -1273,13 +1201,13 @@ contract InstanceController {
             s = bytes32(uint256(vs) & EIP2098_S_MASK);
             v = uint8((uint256(vs) >> 255) + 27);
         } else {
-            revert("InstanceController: bad signature length");
+            revert BadSignatureLength();
         }
-        require(v == 27 || v == 28, "InstanceController: bad v");
-        require(uint256(s) <= SECP256K1N_HALF, "InstanceController: bad s");
+        if (v != 27 && v != 28) revert BadV();
+        if (uint256(s) > SECP256K1N_HALF) revert BadS();
 
         address recovered = ecrecover(digest, v, r, s);
-        require(recovered != address(0), "InstanceController: bad signature");
+        if (recovered == address(0)) revert BadSignature();
         return recovered;
     }
 
@@ -1385,16 +1313,16 @@ contract InstanceController {
     }
 
     function _requireRootComponent(address registry, bytes32 root, bytes32 componentId) private view {
-        require(root != bytes32(0), "InstanceController: root=0");
-        require(componentId != bytes32(0), "InstanceController: componentId=0");
+        if (root == bytes32(0)) revert RootZero();
+        if (componentId == bytes32(0)) revert ZeroComponentId();
 
         try IReleaseRegistryByRoot(registry).getByRoot(root) returns (
             bytes32 foundComponentId, uint64, bytes32, bytes32, bool
         ) {
-            require(foundComponentId != bytes32(0), "InstanceController: root unknown");
-            require(foundComponentId == componentId, "InstanceController: component mismatch");
+            if (foundComponentId == bytes32(0)) revert RootUnknown();
+            if (foundComponentId != componentId) revert ComponentMismatch();
         } catch {
-            revert("InstanceController: registry missing getByRoot");
+            revert RegistryMissingGetByRoot();
         }
     }
 

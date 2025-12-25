@@ -22,7 +22,7 @@ contract InstanceFactoryTest is TestBase {
 
     function test_implementation_is_locked() public {
         InstanceController impl = InstanceController(factory.implementation());
-        vm.expectRevert("InstanceController: already initialized");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.AlreadyInitialized.selector));
         impl.initialize(root, upgrader, emergency, address(0), genesisRoot, genesisUriHash, genesisPolicyHash);
     }
 
@@ -188,15 +188,13 @@ contract InstanceFactoryTest is TestBase {
         uint256 rootPk = 0xA11CE;
         address rootAddr = vm.addr(rootPk);
         bytes32 salt = keccak256("salt-auth-expired");
-        uint256 deadline = block.timestamp + 1;
+        uint256 deadline = 0;
 
         bytes32 digest = factory.hashSetupRequest(
             rootAddr, upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash, salt, deadline
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(rootPk, digest);
         bytes memory sig = abi.encodePacked(r, s, v);
-
-        vm.warp(deadline + 1);
 
         vm.expectRevert("InstanceFactory: expired");
         factory.createInstanceDeterministicAuthorized(
@@ -223,7 +221,7 @@ contract InstanceFactoryTest is TestBase {
     }
 
     function test_createInstance_reverts_on_invalid_args() public {
-        vm.expectRevert("InstanceController: root=0");
+        vm.expectRevert(abi.encodeWithSelector(InstanceController.ZeroRootAuthority.selector));
         factory.createInstance(address(0), upgrader, emergency, genesisRoot, genesisUriHash, genesisPolicyHash);
     }
 
