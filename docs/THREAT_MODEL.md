@@ -9,6 +9,7 @@ Important:
 Related:
 - Flows/diagrams: `blackcat-kernel-contracts/docs/SECURITY_FLOWS.md`
 - Spec: `blackcat-kernel-contracts/docs/SPEC.md`
+- Policy enforcement: `blackcat-kernel-contracts/docs/POLICY_ENFORCEMENT.md`
 - Audit checklist: `blackcat-kernel-contracts/docs/AUDIT_CHECKLIST.md`
 
 ## Trust boundaries (high level)
@@ -46,6 +47,22 @@ Core principle:
 - **On-chain state** is the source of truth for install/upgrade integrity and emergency controls.
 - **Off-chain runtime** must refuse unsafe operations if it cannot verify on-chain state (production = fail closed).
 
+## Attacker capability tiers (why this matters)
+
+This threat model distinguishes between three practical tiers:
+
+1. **Filesystem write only** (common in real incidents)
+   - attacker can upload/modify files (FTP mistake, compromised credentials, vulnerable plugin),
+   - but does *not necessarily* have interactive code execution.
+2. **Application RCE / code execution**
+   - attacker can execute code in the app process (PHP RCE, deserialization, template injection),
+   - can call local services and reach `localhost` resources.
+3. **Host root / hypervisor control**
+   - attacker controls the OS, containers, or the hosting provider.
+
+The Trust Kernel is strongest in tier (1): **tamper-evident** + fail-closed.
+For tier (2) and (3), you need *hardening tiers* (HSM/KMS, process isolation, multi-device approvals).
+
 ## Assets to protect
 
 1. Authority custody (root/upgrade/emergency/reporter):
@@ -56,6 +73,7 @@ Core principle:
    - `activeRoot`, `activeUriHash`, `activePolicyHash`, compatibility roots (if enabled).
 4. Runtime config (security-critical):
    - `chain_id`, RPC quorum, contract addresses, fail-closed mode, and outbox/buffer behavior.
+   - the pinned “back controller” / PEP policy sources (policy bytes, cache paths, signer requirements).
 5. Release trust:
    - official roots in `ReleaseRegistry` and revocations.
 
@@ -88,6 +106,20 @@ Core principle:
 | RPC lies / stale reads | runtime sees inconsistent state | multi-RPC quorum + max-stale + fail closed |
 | Chain / RPC outage | cannot read chain state reliably | buffer/outbox + deny security-critical writes + incident escalation thresholds |
 | Single key compromise | attacker gets one key | Safe/KernelAuthority threshold; keep emergency keys offline |
+
+## “Localhost-only DB” helps, but doesn’t solve RCE
+
+Designing the database to accept only `localhost` reduces remote network attack surface:
+- a remote attacker can’t directly connect to MySQL/Postgres from the internet.
+
+But:
+- an attacker with **local code execution** can still reach `localhost`.
+
+So the real security boundary must be:
+- secrets and privileged writes are only possible through the policy enforcement layer (“back controller”),
+- and that layer fails closed when trust checks fail.
+
+See: `blackcat-kernel-contracts/docs/POLICY_ENFORCEMENT.md`.
 
 ## Attack narrative: filesystem tamper → detection → auto-pause
 
@@ -167,6 +199,15 @@ Expected:
 - Protecting against “perfect” endpoint capture where an attacker controls *all* RPC endpoints used by the runtime.
 - Preventing misuse by an authorized root authority (root authority is ultimately trusted).
 
+## Gaps (v1) and how to cover them (future tiers)
+
+| Gap | Why it matters | Future mitigation direction |
+|---|---|---|
+| App-level RCE can call internal code paths | policy must not be “optional” | process separation (local daemon), capability gating, HSM/KMS-backed secrets |
+| Host root can tamper with everything | chain can’t protect a fully controlled machine | external monitoring + emergency pause + recovery playbooks |
+| Chain/RPC outages can cause availability loss | strict fail-closed can stop writes | staged buffer/outbox + controlled max-stale + escalation thresholds |
+| Supply-chain compromise before first on-chain verification | attacker ships a bad build | installer verification + signed artifacts + release registry trust gating |
+
 ## Security posture: dev vs production
 
 - Development:
@@ -177,4 +218,3 @@ Expected:
   - strict runtime config permissions,
   - pin and lock runtime config hashes on-chain,
   - multi-device authorities only (Safe or KernelAuthority).
-

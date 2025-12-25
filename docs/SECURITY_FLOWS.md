@@ -65,6 +65,67 @@ Properties:
 - **Intra-contract replay resistance**: nonces are included in the struct.
 - **Time-bounded signatures**: `deadline` bounds signature validity.
 
+## Flow: Runtime Policy Enforcement (“Back Controller” / PEP)
+
+The Trust Kernel cannot “sandbox” a server by itself. Instead:
+- `InstanceController` stores the *commitments* (what must be true),
+- the runtime enforces the policy (what is allowed to happen) and fails closed in production.
+
+See also: `blackcat-kernel-contracts/docs/POLICY_ENFORCEMENT.md`.
+
+### Boot sequence (production posture)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant App as App / worker
+  participant Config as blackcat-config
+  participant Runtime as blackcat-core PEP
+  participant IC as InstanceController
+  participant RR as ReleaseRegistry
+  participant MS as ManifestStore
+
+  App->>Config: Load runtime config (secure location)
+  Config-->>Runtime: controller address, chainId, RPC quorum, mode
+
+  Runtime->>IC: snapshotV2() (quorum eth_call)
+  IC-->>Runtime: activeRoot/uriHash/policyHash + flags + paused
+
+  opt ReleaseRegistry enabled
+    Runtime->>RR: isTrustedRoot(activeRoot) (quorum)
+    RR-->>Runtime: true/false
+  end
+
+  opt Policy bytes availability-on-chain enabled
+    Runtime->>MS: get(policyHash) / getChunk(...) (quorum)
+    MS-->>Runtime: policy bytes
+  end
+
+  Runtime->>Runtime: Compute observedRoot/uriHash/policyHash
+  alt mismatch OR paused OR no quorum
+    Runtime->>Runtime: Deny security-critical writes (fail closed)
+  else OK
+    Runtime->>Runtime: Enter normal operation
+  end
+```
+
+### Per-request enforcement (high level)
+
+```mermaid
+flowchart TB
+  Req["Incoming request / job"] --> PEP["Back Controller (PEP)\nverify state + policy"]
+  PEP -->|"OK"| Do["Perform sensitive op\n(DB write / decrypt / rotate key)"]
+  PEP -->|"Mismatch / uncertain"| Deny["Deny / degrade\n(read-only, buffer, or hard fail)"]
+  Deny --> Incident["Optional: reportIncident / checkIn"]
+```
+
+Expected:
+- Sensitive operations are only reachable through the enforcement layer.
+- Production does not “continue anyway” when trust cannot be verified.
+
+Forbidden:
+- Bypassing the enforcement layer by calling lower-level primitives directly (design must avoid exposing secrets outside PEP).
+
 ## Trust Modes: `root+uri` vs “full detail”
 
 ```mermaid
