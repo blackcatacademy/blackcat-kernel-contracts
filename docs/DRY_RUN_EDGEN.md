@@ -18,12 +18,34 @@ From `blackcat-kernel-contracts/`:
 ```bash
 export RPC_URL="https://rpc.layeredge.io"
 
-# Your funded EOA (dry-run only)
-export PRIVATE_KEY="0x..."
+# Create (or reuse) a local dry-run EOA keypair (stored outside the repo).
+# Do NOT reuse production keys.
+export BLACKCAT_EDGEN_KEYFILE="$HOME/.blackcat/secrets/edgen-dryrun-eoa.json"
+mkdir -p "$(dirname "$BLACKCAT_EDGEN_KEYFILE")"
+chmod 700 "$(dirname "$BLACKCAT_EDGEN_KEYFILE")"
+if [ ! -f "$BLACKCAT_EDGEN_KEYFILE" ]; then
+  docker run --rm --entrypoint bash ghcr.io/foundry-rs/foundry:latest -lc \
+    "cast wallet new --json" >"$BLACKCAT_EDGEN_KEYFILE" 2>/dev/null
+  chmod 600 "$BLACKCAT_EDGEN_KEYFILE"
+fi
+
+# Your funded EOA (dry-run only). Private key is loaded from the keyfile.
+# Do NOT paste private keys into issues/chat logs.
+export PRIVATE_KEY="$(
+  python3 - <<'PY'
+import json, os
+path = os.environ["BLACKCAT_EDGEN_KEYFILE"]
+with open(path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+item = data[0] if isinstance(data, list) else data
+print(item["private_key"])
+PY
+)"
 export DEPLOYER_ADDR="$(
   docker run --rm --entrypoint bash ghcr.io/foundry-rs/foundry:latest -lc \
     "cast wallet address --private-key \"$PRIVATE_KEY\""
 )"
+echo "EOA: $DEPLOYER_ADDR"
 ```
 
 Sanity:
