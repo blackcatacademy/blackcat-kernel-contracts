@@ -6,7 +6,7 @@ solc_version = "0.8.24"
 optimizer = true
 optimizer_runs = 1
 via_ir = true
-bytecode_hash = "ipfs"
+bytecode_hash = "none"
 
 [rpc_endpoints]
 edgen = "https://rpc.layeredge.io"

@@ -13,9 +13,10 @@ In practice:
 - most state-changing functions are dominated by `SSTORE` cost anyway (optimizer runs has limited impact),
 - deployment viability is a hard constraint, so the build is configured “size-first”.
 
-## Why `bytecode_hash = "ipfs"`
+## Why `bytecode_hash = "none"`
 
-This keeps Solidity metadata in a commonly supported format for block explorers / verification tooling.
+`InstanceController` is size-constrained. Disabling the metadata hash slightly reduces bytecode size and keeps more
+margin under **EIP-170**.
 
 If you change metadata settings, always re-check EIP-170 size.
 
@@ -33,4 +34,3 @@ Because we’re near EIP-170, any extra feature added to `InstanceController` ca
 Future expansions should prefer:
 - a v2 controller, or
 - a separate helper contract (guard/bot/ops module) referenced by address.
-
