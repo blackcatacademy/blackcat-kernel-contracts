@@ -33,6 +33,8 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 | [OPERATIONS](docs/OPERATIONS.md) | Operational flows (bots, incidents, upgrades) |
 | [AUDIT_CHECKLIST](docs/AUDIT_CHECKLIST.md) | Practical pre-production checklist |
 | [AUDIT_REPORT](docs/AUDIT_REPORT.md) | Internal audit notes + fixes |
+| [TEST_REPORT](docs/TEST_REPORT.md) | What the Foundry test suite validates |
+| [TEST_MATRIX](docs/TEST_MATRIX.md) | External/public API → test mapping |
 | [ROADMAP](docs/ROADMAP.md) | Planned work |
 
 ## Governance model (planned)
