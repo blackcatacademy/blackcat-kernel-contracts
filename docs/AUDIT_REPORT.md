@@ -8,10 +8,12 @@ Scope:
 - `blackcat-kernel-contracts/src/KernelAuthority.sol`
 - `blackcat-kernel-contracts/src/ReleaseRegistry.sol`
 - `blackcat-kernel-contracts/src/ManifestStore.sol`
+- `blackcat-kernel-contracts/src/AuditCommitmentHub.sol` (optional)
 
 Tooling / checks used:
 - Foundry tests: `forge test --via-ir`
 - Bytecode size check: `forge build --via-ir --sizes` (EIP-170)
+- Slither: `slither . --exclude-dependencies --filter-paths "test|script|out|broadcast|cache|deployments"`
 - Foundry lint (notes/warnings)
 
 ## Summary
@@ -21,7 +23,7 @@ Tooling / checks used:
   - `forge fmt --check`
   - `forge test --via-ir`
   - `forge build --via-ir --skip test --skip script --sizes` (EIP-170)
-  - Slither (static analysis) in warning-only mode
+  - Slither (static analysis) with **High=0** and **Medium=0**
 - `InstanceController` remains under the EIP-170 runtime limit:
   - Runtime size: **24,337 bytes**
   - Margin: **239 bytes**
@@ -102,6 +104,15 @@ Design rationale:
 
 Hardening (implemented):
 - Reject `target == address(0)` to avoid accidental burns/misconfig.
+
+### INFO — AuditCommitmentHub replay resistance is enforced via per-instance sequence cursor
+
+Contract: `blackcat-kernel-contracts/src/AuditCommitmentHub.sol`
+
+Notes:
+- `commitAuthorized(...)` is EIP-712 / EIP-1271 compatible and includes `(chainId, verifyingContract)` in the domain separator.
+- Replays/reordering are prevented by requiring `seqFrom == lastSeq[instance] + 1`.
+- The hub intentionally does not gate “server writes”; it only provides an append-only event stream and ordering guarantees.
 
 ## Explicit non-goals / remaining risks
 
