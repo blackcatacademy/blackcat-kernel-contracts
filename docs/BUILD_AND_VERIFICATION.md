@@ -13,10 +13,10 @@ In practice:
 - most state-changing functions are dominated by `SSTORE` cost anyway (optimizer runs has limited impact),
 - deployment viability is a hard constraint, so the build is configured “size-first”.
 
-## Why `bytecode_hash = "none"`
+## Why `bytecode_hash = "ipfs"`
 
-`InstanceController` is size-constrained. Disabling the metadata hash slightly reduces bytecode size and keeps more
-margin under **EIP-170**.
+This keeps Solidity metadata in a commonly supported format for explorers / verifiers and improves portability across
+EVM-compatible networks.
 
 If you change metadata settings, always re-check EIP-170 size.
 

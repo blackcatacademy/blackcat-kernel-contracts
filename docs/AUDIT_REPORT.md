@@ -25,8 +25,8 @@ Tooling / checks used:
   - `forge build --via-ir --skip test --skip script --sizes` (EIP-170)
   - Slither (static analysis) with **High=0** and **Medium=0**
 - `InstanceController` remains under the EIP-170 runtime limit:
-  - Runtime size: **24,296 bytes**
-  - Margin: **280 bytes**
+  - Runtime size: **24,337 bytes**
+  - Margin: **239 bytes**
 
 ## Findings
 
@@ -166,4 +166,4 @@ These contracts enforce on-chain trust transitions and provide authorized paths,
   - registry enforcement invariants when `releaseRegistryLocked/expectedComponentIdLocked` are set,
   - signature validation across mixed EOA + EIP-1271 authority configurations.
 - Decide and document “production baseline” authority mode (EOA vs `KernelAuthority` vs Safe) and required thresholds per operation.
-- Keep `InstanceController` EIP-170 margin in mind for any future additions (280B remaining as of this report).
+- Keep `InstanceController` EIP-170 margin in mind for any future additions (239B remaining as of this report).
