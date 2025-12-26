@@ -13,6 +13,9 @@ EdgenScan is Blockscout and exposes an Etherscan-compatible API:
 - API: `https://edgenscan.io/api`
 - Foundry verification docs: https://docs.blockscout.com/devs/verification/foundry-verification
 
+This repo uses Foundry, but the recommended way to run it is via Docker:
+- `ghcr.io/foundry-rs/foundry:stable`
+
 ## What you must verify
 
 Note on names:
@@ -59,27 +62,38 @@ Important:
 
 ## Verify via Foundry (CLI)
 
-If your Foundry version supports the Blockscout verifier:
+If your Foundry version supports the Blockscout verifier (it does in the Docker image):
+
+Set an API key string (Blockscout often ignores it, but Foundry expects one):
 
 ```bash
-export VERIFIER_API_KEY="blockscout"
+export ETHERSCAN_API_KEY="blockscout"
 
-forge verify-contract \
-  --chain-id 4207 \
+OWNER_ADDRESS=0x...
+
+CONSTRUCTOR_ARGS=$(docker run --rm --entrypoint cast ghcr.io/foundry-rs/foundry:stable \
+  abi-encode "constructor(address)" "$OWNER_ADDRESS")
+
+docker run --rm --entrypoint forge -v "$PWD":/work -w /work ghcr.io/foundry-rs/foundry:stable \
+  verify-contract \
+  --chain 4207 \
   --verifier blockscout \
   --verifier-url https://edgenscan.io/api \
-  --verifier-api-key "$VERIFIER_API_KEY" \
+  --watch \
   <CONTRACT_ADDRESS> \
   src/ReleaseRegistry.sol:BlackCatReleaseRegistryV1 \
-  --constructor-args $(cast abi-encode "constructor(address)" <OWNER_ADDRESS>)
+  --constructor-args "$CONSTRUCTOR_ARGS"
 ```
 
 To get the **Standard JSON Input** for manual UI verification:
 
 ```bash
-forge verify-contract \
+docker run --rm --entrypoint forge -v "$PWD":/work -w /work ghcr.io/foundry-rs/foundry:stable \
+  verify-contract \
   --show-standard-json-input \
-  --chain-id 4207 \
+  --chain 4207 \
+  --verifier blockscout \
+  --verifier-url https://edgenscan.io/api \
   <CONTRACT_ADDRESS> \
   src/ReleaseRegistry.sol:BlackCatReleaseRegistryV1
 ```
