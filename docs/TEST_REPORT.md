@@ -8,6 +8,7 @@ Scope:
 - `src/ReleaseRegistry.sol`
 - `src/ManifestStore.sol`
 - `src/KernelAuthority.sol`
+- `src/AuditCommitmentHub.sol`
 
 Note:
 - The contracts are **not audited**. This is an internal engineering test record, not a formal audit.
@@ -44,6 +45,7 @@ Main suites:
 - `test/ReleaseRegistry.t.sol`
 - `test/ManifestStore.t.sol`
 - `test/KernelAuthority.t.sol`
+- `test/AuditCommitmentHub.t.sol`
 
 Additional suites (focused on missing edges / failure paths):
 - `test/InstanceController.Additional.t.sol`
@@ -51,6 +53,9 @@ Additional suites (focused on missing edges / failure paths):
 - `test/ReleaseRegistry.Additional.t.sol`
 - `test/ManifestStore.Additional.t.sol`
 - `test/KernelAuthority.Additional.t.sol`
+
+Integration suites (end-to-end flows across contracts):
+- `test/KernelAuthority.Integration.t.sol`
 
 Stateful fuzz (“invariant-ish”) suites:
 - `test/InstanceController.StatefulFuzz.t.sol`
@@ -132,6 +137,7 @@ Covered areas:
 - authorized publish/revoke flows validate:
   - EOA signatures,
   - EIP-2098 compact signatures,
+  - EIP-1271 contract signers (e.g. `KernelAuthority` as owner),
   - deadline expiry,
   - non-replay (nonce consumption).
 - batch APIs validate length matching and reject empty batches,
@@ -153,11 +159,20 @@ Covered areas:
 - EIP-712 digests are computed and validated in execution,
 - replay protection via nonce,
 - `execute` and `executeBatch` enforce threshold signatures and order,
+- `execute` and `executeBatch` reject `target=0`,
 - ETH value transfer via `execute` is tested,
 - EIP-1271 `isValidSignature` supports tooling expectations and rejects insufficient/unsorted signer blobs.
 
 Note:
 - Signer arrays must be strictly increasing. Duplicate signers are therefore rejected by the ordering invariant.
+
+### AuditCommitmentHub (optional batched audit root commits)
+
+Covered areas:
+- reads reporter authority from `InstanceController.reporterAuthority()`,
+- enforces monotonic sequence ranges (`seqFrom == lastSeq + 1`),
+- accepts EIP-1271 reporter signatures (KernelAuthority signer blob),
+- rejects insufficient signature blobs for contract reporters.
 
 ## What this does not guarantee
 

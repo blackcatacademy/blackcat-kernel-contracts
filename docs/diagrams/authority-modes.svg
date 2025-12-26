@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-label="Authority modes: Safe vs KernelAuthority vs EOA">
+  <defs>
+    <style>
+      .title { font: 700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #0f172a; }
+      .groupTitle { font: 700 16px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #0f172a; }
+      .boxTitle { font: 700 13px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #0f172a; }
+      .boxText { font: 12px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #334155; }
+      .box { fill: #ffffff; stroke: #94a3b8; stroke-width: 1; rx: 12; }
+      .gA { fill: #f8fafc; stroke: #64748b; stroke-width: 2; rx: 18; }
+      .gB { fill: #ecfeff; stroke: #06b6d4; stroke-width: 2; rx: 18; }
+      .gC { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 2; rx: 18; }
+      .arrow { stroke-width: 2; fill: none; }
+      .arrowOpt { stroke-width: 2; stroke-dasharray: 6 6; fill: none; }
+    </style>
+    <marker id="arrowHeadRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e03131"/>
+    </marker>
+    <marker id="arrowHeadGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f9e44"/>
+    </marker>
+    <marker id="arrowHeadBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1971c2"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="48">Authority Modes (Safe vs KernelAuthority vs EOA)</text>
+
+  <!-- Groups -->
+  <rect class="gA" x="40" y="80" width="320" height="560" />
+  <rect class="gB" x="440" y="80" width="320" height="560" />
+  <rect class="gC" x="840" y="80" width="320" height="560" />
+
+  <text class="groupTitle" x="60" y="115">Devices / Key Custody</text>
+  <text class="groupTitle" x="460" y="115">Authority Address (on-chain)</text>
+  <text class="groupTitle" x="860" y="115">Kernel Targets</text>
+
+  <!-- Devices -->
+  <rect class="box" x="80" y="160" width="240" height="70" />
+  <text class="boxTitle" x="100" y="190">Device 1</text>
+  <rect class="box" x="80" y="250" width="240" height="70" />
+  <text class="boxTitle" x="100" y="280">Device 2</text>
+  <rect class="box" x="80" y="340" width="240" height="70" />
+  <text class="boxTitle" x="100" y="370">Device 3</text>
+
+  <!-- Authorities -->
+  <rect class="box" x="480" y="160" width="240" height="80" />
+  <text class="boxTitle" x="500" y="190">Safe (multisig)</text>
+  <text class="boxText" x="500" y="210">battle-tested UX</text>
+
+  <rect class="box" x="480" y="270" width="240" height="80" />
+  <text class="boxTitle" x="500" y="300">KernelAuthority</text>
+  <text class="boxText" x="500" y="320">threshold + EIP-1271</text>
+
+  <rect class="box" x="480" y="380" width="240" height="80" />
+  <text class="boxTitle" x="500" y="410">EOA (dev only)</text>
+  <text class="boxText" x="500" y="430">single key risk</text>
+
+  <!-- Targets -->
+  <rect class="box" x="880" y="160" width="240" height="70" />
+  <text class="boxTitle" x="900" y="190">InstanceController</text>
+  <rect class="box" x="880" y="245" width="240" height="70" />
+  <text class="boxTitle" x="900" y="275">ReleaseRegistry</text>
+  <rect class="box" x="880" y="330" width="240" height="70" />
+  <text class="boxTitle" x="900" y="360">InstanceFactory</text>
+  <rect class="box" x="880" y="415" width="240" height="70" />
+  <text class="boxTitle" x="900" y="445">ManifestStore</text>
+
+  <!-- Arrows: devices -> authorities -->
+  <path class="arrow" d="M 320 160 L 480 160" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 320 320 L 480 240" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+  <path class="arrow" d="M 320 340 L 480 160" stroke="#1971c2" marker-end="url(#arrowHeadBlue)" />
+
+  <path class="arrow" d="M 320 160 L 480 270" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 320 320 L 480 350" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+
+  <path class="arrowOpt" d="M 320 160 L 480 380" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+
+  <!-- Arrows: authorities -> targets -->
+  <path class="arrow" d="M 720 160 L 880 160" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 720 160 L 880 245" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 720 160 L 880 330" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 720 160 L 880 415" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+
+  <path class="arrow" d="M 720 270 L 880 160" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+  <path class="arrow" d="M 720 270 L 880 245" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+  <path class="arrow" d="M 720 270 L 880 330" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+  <path class="arrow" d="M 720 270 L 880 415" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+
+  <path class="arrowOpt" d="M 720 380 L 880 160" stroke="#1971c2" marker-end="url(#arrowHeadBlue)" />
+</svg>

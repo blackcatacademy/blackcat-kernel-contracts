@@ -6,7 +6,7 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {ReleaseRegistry} from "../src/ReleaseRegistry.sol";
+import {BlackCatReleaseRegistryV1 as ReleaseRegistry} from "../src/ReleaseRegistry.sol";
 
 /// @notice Lightweight “stateful fuzz” tests without external dependencies.
 /// @dev We intentionally ignore reverts for random operations and assert invariants at the end.

@@ -15,7 +15,8 @@ In practice:
 
 ## Why `bytecode_hash = "ipfs"`
 
-This keeps Solidity metadata in a commonly supported format for block explorers / verification tooling.
+This keeps Solidity metadata in a commonly supported format for explorers / verifiers and improves portability across
+EVM-compatible networks.
 
 If you change metadata settings, always re-check EIP-170 size.
 
@@ -33,4 +34,3 @@ Because we’re near EIP-170, any extra feature added to `InstanceController` ca
 Future expansions should prefer:
 - a v2 controller, or
 - a separate helper contract (guard/bot/ops module) referenced by address.
-

@@ -6,7 +6,7 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {KernelAuthority} from "../src/KernelAuthority.sol";
+import {BlackCatKernelAuthorityV1 as KernelAuthority} from "../src/KernelAuthority.sol";
 
 contract ValueReceiver {
     uint256 public receivedCount;
@@ -114,6 +114,15 @@ contract KernelAuthorityAdditionalTest is TestBase {
         assertEq(authority.nonce(), nonceBefore + 1, "nonce not incremented");
     }
 
+    function test_execute_rejects_target_zero() public {
+        bytes memory data = bytes("");
+        uint256 deadline = block.timestamp + 3600;
+        bytes[] memory sigs = new bytes[](0);
+
+        vm.expectRevert("KernelAuthority: target=0");
+        authority.execute(address(0), 0, data, deadline, sigs);
+    }
+
     function test_execute_rejects_invalid_signer_even_if_ordered() public {
         address[] memory signers = new address[](2);
         signers[0] = s0.addr;
@@ -148,6 +157,27 @@ contract KernelAuthorityAdditionalTest is TestBase {
 
         vm.expectRevert("KernelAuthority: signers not ordered");
         authority.execute(address(receiver), 0, data, deadline, sigs);
+    }
+
+    function test_executeBatch_rejects_target_zero() public {
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory data = new bytes[](1);
+
+        targets[0] = address(0);
+        values[0] = 0;
+        data[0] = bytes("");
+
+        uint256 deadline = block.timestamp + 3600;
+        uint256 nonceBefore = authority.nonce();
+        bytes32 digest = authority.hashExecuteBatch(targets, values, data, nonceBefore, deadline);
+
+        bytes[] memory sigs = new bytes[](2);
+        sigs[0] = _signDigest(s0, digest);
+        sigs[1] = _signDigest(s1, digest);
+
+        vm.expectRevert("KernelAuthority: target=0");
+        authority.executeBatch(targets, values, data, deadline, sigs);
     }
 
     function test_executeBatch_rejects_empty_batch() public {

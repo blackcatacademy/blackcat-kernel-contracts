@@ -6,7 +6,7 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {ManifestStore} from "../src/ManifestStore.sol";
+import {BlackCatManifestStoreV1 as ManifestStore} from "../src/ManifestStore.sol";
 
 /// @notice Lightweight “stateful fuzz” tests without external dependencies.
 /// @dev We intentionally ignore reverts for random operations and assert invariants after each step.

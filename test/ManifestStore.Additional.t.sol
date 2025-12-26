@@ -6,7 +6,7 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {ManifestStore} from "../src/ManifestStore.sol";
+import {BlackCatManifestStoreV1 as ManifestStore} from "../src/ManifestStore.sol";
 
 contract ManifestStoreAdditionalTest is TestBase {
     address private owner = address(0x1111111111111111111111111111111111111111);
@@ -167,4 +167,3 @@ contract ManifestStoreAdditionalTest is TestBase {
         return abi.encodePacked(r, s, v);
     }
 }
-

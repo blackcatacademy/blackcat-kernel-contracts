@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-label="BlackCat trust boundaries overview">
+  <defs>
+    <style>
+      .title { font: 700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #0f172a; }
+      .groupTitle { font: 700 16px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #0f172a; }
+      .boxTitle { font: 700 13px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #0f172a; }
+      .boxText { font: 12px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #334155; }
+      .box { fill: #ffffff; stroke: #94a3b8; stroke-width: 1; rx: 12; }
+      .g1 { fill: #fef2f2; stroke: #ef4444; stroke-width: 2; rx: 18; }
+      .g2 { fill: #ecfdf5; stroke: #10b981; stroke-width: 2; rx: 18; }
+      .g3 { fill: #eff6ff; stroke: #2563eb; stroke-width: 2; rx: 18; }
+      .arrow { stroke: #334155; stroke-width: 2; fill: none; marker-end: url(#arrowHead); }
+    </style>
+    <marker id="arrowHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="48">Trust Boundaries (High Level)</text>
+
+  <!-- Groups -->
+  <rect class="g1" x="40" y="80" width="340" height="560" />
+  <rect class="g2" x="430" y="80" width="340" height="560" />
+  <rect class="g3" x="820" y="80" width="340" height="560" />
+
+  <text class="groupTitle" x="60" y="115">Untrusted / Easily Compromised</text>
+  <text class="groupTitle" x="450" y="115">Trust Anchors (Must Protect)</text>
+  <text class="groupTitle" x="840" y="115">Verifiers (Must Fail-Closed)</text>
+
+  <!-- Untrusted -->
+  <rect class="box" x="70" y="150" width="280" height="90" />
+  <text class="boxTitle" x="90" y="175">Server filesystem</text>
+  <text class="boxText" x="90" y="195">- app code + configs</text>
+  <text class="boxText" x="90" y="213">- FTP mistakes / tamper risk</text>
+
+  <rect class="box" x="70" y="255" width="280" height="90" />
+  <text class="boxTitle" x="90" y="280">Hosting / OS</text>
+  <text class="boxText" x="90" y="300">- admins, processes, containers</text>
+
+  <rect class="box" x="70" y="360" width="280" height="90" />
+  <text class="boxTitle" x="90" y="385">Network path</text>
+  <text class="boxText" x="90" y="405">- DNS / proxy / MITM risk</text>
+
+  <rect class="box" x="70" y="465" width="280" height="90" />
+  <text class="boxTitle" x="90" y="490">Relayer infra</text>
+  <text class="boxText" x="90" y="510">- submitter, pays gas (not a signer)</text>
+
+  <!-- Trust anchors -->
+  <rect class="box" x="460" y="180" width="280" height="100" />
+  <text class="boxTitle" x="480" y="205">Authority keys</text>
+  <text class="boxText" x="480" y="225">- Safe / Ledger / KernelAuthority</text>
+  <text class="boxText" x="480" y="243">- root / upgrade / emergency</text>
+
+  <rect class="box" x="460" y="310" width="280" height="100" />
+  <text class="boxTitle" x="480" y="335">EVM chain state</text>
+  <text class="boxText" x="480" y="355">- InstanceController</text>
+  <text class="boxText" x="480" y="373">- ReleaseRegistry</text>
+
+  <!-- Verifiers -->
+  <rect class="box" x="850" y="210" width="280" height="110" />
+  <text class="boxTitle" x="870" y="235">blackcat-core runtime (PEP)</text>
+  <text class="boxText" x="870" y="255">- quorum reads</text>
+  <text class="boxText" x="870" y="273">- enforce policy</text>
+  <text class="boxText" x="870" y="291">- deny unsafe writes in prod</text>
+
+  <rect class="box" x="850" y="350" width="280" height="110" />
+  <text class="boxTitle" x="870" y="375">blackcat-config</text>
+  <text class="boxText" x="870" y="395">- secure runtime config file</text>
+  <text class="boxText" x="870" y="413">- permission checks</text>
+  <text class="boxText" x="870" y="431">- canonical bytes + hash pinning</text>
+
+  <!-- Arrows -->
+  <path class="arrow" d="M 600 280 L 600 310" />
+  <path class="arrow" d="M 350 151 L 852 211" />
+  <path class="arrow" d="M 351 449 L 851 319" />
+  <path class="arrow" d="M 350 553 L 598 409" />
+  <path class="arrow" d="M 1130 459 L 1129 320" />
+  <path class="arrow" d="M 850 405 L 850 265" />
+</svg>

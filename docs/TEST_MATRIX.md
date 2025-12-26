@@ -155,13 +155,13 @@ Legend:
 - Publishing:
   - `publish` ✅/❌ `test/ReleaseRegistry.t.sol:test_publish_only_owner`, `test/ReleaseRegistry.t.sol:test_publish_rejects_invalid_values`
   - `publishBatch` ✅/❌ `test/ReleaseRegistry.t.sol:test_publishBatch_publishes_multiple_releases`, `test/ReleaseRegistry.Additional.t.sol:test_publishBatch_rejects_length_mismatch`
-  - `publishAuthorized` ✅/❌ `test/ReleaseRegistry.t.sol:test_publishAuthorized_accepts_eoa_owner_signature`, `test/ReleaseRegistry.t.sol:test_publishAuthorized_rejects_high_s_malleable_signature`
+  - `publishAuthorized` ✅/❌ `test/ReleaseRegistry.t.sol:test_publishAuthorized_accepts_eoa_owner_signature`, `test/ReleaseRegistry.t.sol:test_publishAuthorized_rejects_high_s_malleable_signature`, `test/ReleaseRegistry.Additional.t.sol:test_publishAuthorized_accepts_kernelAuthority_owner_signature`, `test/ReleaseRegistry.Additional.t.sol:test_publishAuthorized_rejects_kernelAuthority_owner_signature_with_insufficient_signatures`
   - `publishBatchAuthorized` ✅/❌ `test/ReleaseRegistry.t.sol:test_publishBatchAuthorized_accepts_eoa_owner_signature_and_is_not_replayable`, `test/ReleaseRegistry.t.sol:test_publishBatchAuthorized_rejects_empty_batch`
 - Revocation:
   - `revoke` ✅/❌ `test/ReleaseRegistry.t.sol:test_revokeByRoot_revokes_release`, `test/ReleaseRegistry.Additional.t.sol:test_revoke_rejects_release_not_found`
   - `revokeBatch` ✅/❌ `test/ReleaseRegistry.t.sol:test_revokeBatchAuthorized_accepts_eoa_owner_signature_and_is_not_replayable`, `test/ReleaseRegistry.Additional.t.sol:test_revokeBatch_rejects_length_mismatch`
   - `revokeByRoot` ✅/❌ `test/ReleaseRegistry.t.sol:test_revokeByRoot_revokes_release`, `test/ReleaseRegistry.Additional.t.sol:test_revokeByRoot_rejects_zero_root`
-  - `revokeAuthorized` ✅/❌ `test/ReleaseRegistry.t.sol:test_revokeAuthorized_accepts_eoa_owner_signature`, `test/ReleaseRegistry.Additional.t.sol:test_revokeAuthorized_rejects_invalid_signature`
+  - `revokeAuthorized` ✅/❌ `test/ReleaseRegistry.t.sol:test_revokeAuthorized_accepts_eoa_owner_signature`, `test/ReleaseRegistry.Additional.t.sol:test_revokeAuthorized_rejects_invalid_signature`, `test/ReleaseRegistry.Additional.t.sol:test_revokeAuthorized_accepts_kernelAuthority_owner_signature`
   - `revokeBatchAuthorized` ✅/❌ `test/ReleaseRegistry.t.sol:test_revokeBatchAuthorized_accepts_eoa_owner_signature_and_is_not_replayable`, `test/ReleaseRegistry.Additional.t.sol:test_revokeBatchAuthorized_rejects_root_mismatch`
   - `revokeByRootAuthorized` ✅/❌ `test/ReleaseRegistry.t.sol:test_revokeByRootAuthorized_accepts_eoa_owner_signature`, `test/ReleaseRegistry.Additional.t.sol:test_revokeByRootAuthorized_rejects_root_not_found`
 - Views:
@@ -191,6 +191,13 @@ Legend:
   - ❌ unordered sigs `test/KernelAuthority.t.sol:test_execute_rejects_unsorted_signatures`
   - ❌ invalid signer `test/KernelAuthority.Additional.t.sol:test_execute_rejects_invalid_signer_even_if_ordered`
   - ❌ duplicate sigs `test/KernelAuthority.Additional.t.sol:test_execute_rejects_duplicate_signatures`
-- `executeBatch(...)` ✅/❌ `test/KernelAuthority.t.sol:test_executeBatch_runs_multiple_calls`, `test/KernelAuthority.Additional.t.sol:test_executeBatch_rejects_*`
+  - ❌ target=0 `test/KernelAuthority.Additional.t.sol:test_execute_rejects_target_zero`
+- `executeBatch(...)` ✅/❌ `test/KernelAuthority.t.sol:test_executeBatch_runs_multiple_calls`, `test/KernelAuthority.Additional.t.sol:test_executeBatch_rejects_*`, `test/KernelAuthority.Additional.t.sol:test_executeBatch_rejects_target_zero`
 - `isValidSignature(bytes32,bytes)` ✅/❌ `test/KernelAuthority.t.sol:test_isValidSignature_accepts_packed_bytes_array`, `test/KernelAuthority.t.sol:test_isValidSignature_rejects_insufficient_or_unsorted`
 - `setConfig(...)` ✅ `test/KernelAuthority.t.sol:test_setConfig_only_self_via_execute` ❌ invalid config `test/KernelAuthority.Additional.t.sol:test_execute_reverts_when_setConfig_is_invalid`
+
+## AuditCommitmentHub (`src/AuditCommitmentHub.sol`)
+
+- `domainSeparator()`, `hashCommit(...)` ✅ (implicit in signature validation) `test/AuditCommitmentHub.t.sol:test_commitAuthorized_accepts_kernelAuthority_reporter_signature`
+- `commit(...)` ✅/❌ `test/AuditCommitmentHub.t.sol:test_commit_allows_direct_reporter_sender_and_enforces_seq`, `test/AuditCommitmentHub.t.sol:test_commit_rejects_when_reporter_not_set`
+- `commitAuthorized(...)` ✅/❌ `test/AuditCommitmentHub.t.sol:test_commitAuthorized_accepts_kernelAuthority_reporter_signature`, `test/AuditCommitmentHub.t.sol:test_commitAuthorized_rejects_insufficient_kernelAuthority_signatures`

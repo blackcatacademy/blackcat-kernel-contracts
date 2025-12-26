@@ -5,11 +5,11 @@
 
 pragma solidity ^0.8.24;
 
-import {InstanceController} from "./InstanceController.sol";
+import {BlackCatInstanceControllerV1 as InstanceController} from "./InstanceController.sol";
 
 /// @notice Creates per-install InstanceController contracts.
 /// @dev Skeleton factory (not audited, not production-ready). Uses EIP-1167 minimal proxy clones for efficiency.
-contract InstanceFactory {
+contract BlackCatInstanceFactoryV1 {
     bytes32 private constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant NAME_HASH = keccak256(bytes("BlackCatInstanceFactory"));

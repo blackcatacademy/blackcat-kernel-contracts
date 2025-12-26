@@ -11,6 +11,15 @@ This means **multi-device security is achieved by choosing authority addresses a
 
 ## Visual overview (call paths)
 
+Rendered diagram (SVG):
+
+![Authority modes](diagrams/authority-modes.svg)
+
+Diagram source: `docs/diagrams/authority-modes.excalidraw`
+
+<details>
+<summary>Mermaid source (diff-friendly)</summary>
+
 ```mermaid
 flowchart LR
   %% ==== Devices ====
@@ -56,6 +65,7 @@ flowchart LR
   D1 --> EOA
   EOA -->|tx| IC
 ```
+</details>
 
 ## Visual overview (relayed signatures)
 

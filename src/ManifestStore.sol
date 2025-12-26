@@ -12,7 +12,7 @@ pragma solidity ^0.8.24;
 /// - Append-only, chunked storage keyed by an off-chain content hash (`blobHash`).
 /// - Owner-gated writes to prevent third-party sabotage of official blobs.
 /// - No on-chain recomputation of the content hash (done off-chain; consumers MUST verify).
-contract ManifestStore {
+contract BlackCatManifestStoreV1 {
     bytes32 private constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant NAME_HASH = keccak256(bytes("BlackCatManifestStore"));

@@ -5,7 +5,7 @@
 
 pragma solidity ^0.8.24;
 
-import {ReleaseRegistry} from "../src/ReleaseRegistry.sol";
+import {BlackCatReleaseRegistryV1 as ReleaseRegistry} from "../src/ReleaseRegistry.sol";
 import {FoundryVm} from "./FoundryVm.sol";
 
 /// @notice Deploy ReleaseRegistry.

@@ -5,7 +5,7 @@
 
 pragma solidity ^0.8.24;
 
-import {KernelAuthority} from "../src/KernelAuthority.sol";
+import {BlackCatKernelAuthorityV1 as KernelAuthority} from "../src/KernelAuthority.sol";
 import {FoundryVm} from "./FoundryVm.sol";
 
 /// @notice Deploy a KernelAuthority threshold signer (multi-device by design).
@@ -36,4 +36,3 @@ contract DeployKernelAuthority {
         vm.stopBroadcast();
     }
 }
-

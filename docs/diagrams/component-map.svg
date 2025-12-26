@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-label="BlackCat trust kernel component map">
+  <defs>
+    <style>
+      .title { font: 700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #0f172a; }
+      .groupTitle { font: 700 16px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #0f172a; }
+      .boxTitle { font: 700 14px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #0f172a; }
+      .boxText { font: 12px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill: #334155; }
+      .box { fill: #ffffff; stroke: #94a3b8; stroke-width: 1; rx: 12; }
+      .groupA { fill: #eff6ff; stroke: #2563eb; stroke-width: 2; rx: 18; }
+      .groupB { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 2; rx: 18; }
+      .arrow { stroke: #334155; stroke-width: 2; fill: none; marker-end: url(#arrowHead); }
+      .arrowOptional { stroke: #64748b; stroke-width: 2; stroke-dasharray: 6 6; fill: none; marker-end: url(#arrowHead); }
+    </style>
+    <marker id="arrowHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="48">Component Map (Off-chain ↔ On-chain)</text>
+
+  <!-- Groups -->
+  <rect class="groupA" x="40" y="80" width="520" height="560" />
+  <rect class="groupB" x="640" y="80" width="520" height="560" />
+
+  <text class="groupTitle" x="60" y="115">Off-chain (blackcat-cli / installer / runtime)</text>
+  <text class="groupTitle" x="660" y="115">On-chain (EVM)</text>
+
+  <!-- Off-chain boxes -->
+  <rect class="box" x="80" y="140" width="440" height="105" />
+  <text class="boxTitle" x="100" y="168">Integrity Builder</text>
+  <text class="boxText" x="100" y="190">- compute release root + uriHash + policyHash</text>
+  <text class="boxText" x="100" y="208">- prepare publish bundles</text>
+
+  <rect class="box" x="80" y="260" width="440" height="105" />
+  <text class="boxTitle" x="100" y="288">Authority Signers (multi-device)</text>
+  <text class="boxText" x="100" y="310">- Safe / Ledger / KernelAuthority signers</text>
+  <text class="boxText" x="100" y="328">- approve installs / upgrades</text>
+
+  <rect class="box" x="80" y="380" width="440" height="105" />
+  <text class="boxTitle" x="100" y="408">Relayer / Operator</text>
+  <text class="boxText" x="100" y="430">- submits tx, pays gas</text>
+  <text class="boxText" x="100" y="448">- does not need authority keys</text>
+
+  <rect class="box" x="80" y="500" width="440" height="105" />
+  <text class="boxTitle" x="100" y="528">Runtime Agent (PEP / “Back Controller”)</text>
+  <text class="boxText" x="100" y="550">- quorum reads + policy enforcement (prod fail-closed)</text>
+  <text class="boxText" x="100" y="568">- blocks unsafe decrypt/write paths</text>
+
+  <!-- On-chain boxes -->
+  <rect class="box" x="680" y="140" width="440" height="80" />
+  <text class="boxTitle" x="700" y="170">ReleaseRegistry</text>
+  <text class="boxText" x="700" y="190">- publish official roots + revocations</text>
+
+  <rect class="box" x="680" y="235" width="440" height="80" />
+  <text class="boxTitle" x="700" y="265">ManifestStore (optional)</text>
+  <text class="boxText" x="700" y="285">- on-chain blob availability (chunked)</text>
+
+  <rect class="box" x="680" y="330" width="440" height="80" />
+  <text class="boxTitle" x="700" y="360">InstanceFactory</text>
+  <text class="boxText" x="700" y="380">- CREATE2 setup ceremony</text>
+
+  <rect class="box" x="680" y="425" width="440" height="80" />
+  <text class="boxTitle" x="700" y="455">InstanceController (per install)</text>
+  <text class="boxText" x="700" y="475">- activeRoot / uriHash / policyHash + pause</text>
+
+  <rect class="box" x="680" y="520" width="440" height="80" />
+  <text class="boxTitle" x="700" y="550">KernelAuthority (optional)</text>
+  <text class="boxText" x="700" y="570">- threshold signer + EIP-1271</text>
+
+  <!-- Arrows -->
+  <path class="arrow" d="M 520 312 L 520 382" />
+  <path class="arrow" d="M 520 432 L 680 370" />
+  <path class="arrow" d="M 900 410 L 900 520" />
+
+  <path class="arrow" d="M 520 192 L 680 180" />
+  <path class="arrowOptional" d="M 520 210 L 680 260" />
+
+  <path class="arrow" d="M 520 552 L 680 465" />
+  <path class="arrowOptional" d="M 520 570 L 680 195" />
+</svg>
+

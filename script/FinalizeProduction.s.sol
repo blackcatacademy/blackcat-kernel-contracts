@@ -5,7 +5,7 @@
 
 pragma solidity ^0.8.24;
 
-import {InstanceController} from "../src/InstanceController.sol";
+import {BlackCatInstanceControllerV1 as InstanceController} from "../src/InstanceController.sol";
 import {FoundryVm} from "./FoundryVm.sol";
 
 /// @notice One-shot helper to lock down a controller for production.
@@ -50,4 +50,3 @@ contract FinalizeProduction {
         vm.stopBroadcast();
     }
 }
-

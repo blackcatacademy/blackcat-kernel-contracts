@@ -11,6 +11,15 @@ Important:
 
 ## Component Map
 
+Rendered diagram (SVG):
+
+![Component map](diagrams/component-map.svg)
+
+Diagram source: `docs/diagrams/component-map.excalidraw`
+
+<details>
+<summary>Mermaid source (diff-friendly)</summary>
+
 ```mermaid
 flowchart TB
   %% ===== Off-chain =====
@@ -42,6 +51,7 @@ flowchart TB
   Runtime -->|eth_call quorum| RR
   Runtime -->|optional fetch| Builder
 ```
+</details>
 
 ## Common Pattern: EIP-712 Digest + Anti-Replay
 
