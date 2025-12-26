@@ -26,6 +26,7 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 - `blackcat-kernel-contracts/docs/THREAT_MODEL.md`
 - `blackcat-kernel-contracts/docs/POLICY_ENFORCEMENT.md`
 - `blackcat-kernel-contracts/docs/AUDIT_CHECKLIST.md`
+- `blackcat-kernel-contracts/docs/AUDIT_REPORT.md`
 - `blackcat-kernel-contracts/docs/AUTHORITY_MODES.md`
 - `blackcat-kernel-contracts/docs/ROADMAP.md`
 - `blackcat-kernel-contracts/docs/OPERATIONS.md`
