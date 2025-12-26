@@ -11,8 +11,13 @@ After verification, Blockscout can decode:
 EdgenScan is Blockscout and exposes an Etherscan-compatible API:
 - Explorer: `https://edgenscan.io`
 - API: `https://edgenscan.io/api`
+- Foundry verification docs: https://docs.blockscout.com/devs/verification/foundry-verification
 
 ## What you must verify
+
+Note on names:
+- The Solidity contract names include a `BlackCat...V1` prefix/suffix for explorer clarity.
+- This document still uses the short role names (`ReleaseRegistry`, `InstanceFactory`, `InstanceController`) when describing architecture.
 
 When you deploy with `InstanceFactory`, it also deploys a single `InstanceController` **implementation**.
 Per-install controllers are **EIP-1167 minimal proxy clones** that delegatecall into that implementation.
@@ -65,7 +70,7 @@ forge verify-contract \
   --verifier-url https://edgenscan.io/api \
   --verifier-api-key "$VERIFIER_API_KEY" \
   <CONTRACT_ADDRESS> \
-  src/ReleaseRegistry.sol:ReleaseRegistry \
+  src/ReleaseRegistry.sol:BlackCatReleaseRegistryV1 \
   --constructor-args $(cast abi-encode "constructor(address)" <OWNER_ADDRESS>)
 ```
 
@@ -76,7 +81,7 @@ forge verify-contract \
   --show-standard-json-input \
   --chain-id 4207 \
   <CONTRACT_ADDRESS> \
-  src/ReleaseRegistry.sol:ReleaseRegistry
+  src/ReleaseRegistry.sol:BlackCatReleaseRegistryV1
 ```
 
 Repeat for other contracts (constructor args differ per contract).

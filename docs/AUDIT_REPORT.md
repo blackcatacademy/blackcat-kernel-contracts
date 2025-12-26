@@ -24,7 +24,8 @@ Tooling / checks used:
   - `forge test --via-ir`
   - `forge build --via-ir --skip test --skip script --sizes` (EIP-170)
   - Slither (static analysis) with **High=0** and **Medium=0**
-- `InstanceController` remains under the EIP-170 runtime limit:
+- Slither severity counts (local run): **High=0 Medium=0 Low=39 Info=30**
+- `BlackCatInstanceControllerV1` (per-install controller implementation) remains under the EIP-170 runtime limit:
   - Runtime size: **24,337 bytes**
   - Margin: **239 bytes**
 
