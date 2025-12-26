@@ -114,6 +114,43 @@ Notes:
 - Replays/reordering are prevented by requiring `seqFrom == lastSeq[instance] + 1`.
 - The hub intentionally does not gate “server writes”; it only provides an append-only event stream and ordering guarantees.
 
+## Slither Low/Info findings (accepted by design)
+
+CI enforces **High=0** and **Medium=0**. Low/Info findings are reviewed and accepted when they are an intentional design choice.
+
+Common categories observed:
+
+- `timestamp`
+  - We use `block.timestamp` only for **deadlines / TTL windows** (auth signatures, upgrade windows).
+  - We do not use timestamps for randomness.
+  - Risk is limited to small miner/validator timestamp drift; signatures remain time-bounded and replay-protected via nonces.
+
+- `calls-loop` (KernelAuthority batch execution)
+  - `KernelAuthority.executeBatch(...)` performs calls inside a loop **by design** (it is a multisig-like executor).
+  - Only threshold-approved operations can reach this path, so the primary risk is self-inflicted (oversized batches → out-of-gas).
+
+- `reentrancy-events`
+  - Slither flags “event emitted after external call” patterns in `InstanceFactory` and `KernelAuthority`.
+  - State that matters for safety (nonces / instance registration) is updated before external calls, and no privileged mutable state is written after.
+
+- `low-level-calls`
+  - We intentionally use `staticcall/call` in a few places:
+    - EIP-1271 signature checks (`isValidSignature(...)`) for contract authorities,
+    - reading `reporterAuthority()` from an instance controller (AuditCommitmentHub),
+    - executing arbitrary targets in `KernelAuthority` (multisig executor).
+  - These calls are guarded by signature thresholds and/or strict return-value checks.
+
+- `too-many-digits`
+  - EIP-1167 minimal proxy initcode constants are expected to be long literals (assembly clone code).
+
+- `missing-inheritance`
+  - Slither suggests inheriting interface stubs for `ReleaseRegistry`.
+  - This is a type-safety/documentation improvement (no runtime impact). Optional.
+
+- `cyclomatic-complexity`
+  - `finalizeProduction(...)` is intentionally “one-shot hardening” and therefore branchy.
+  - Covered by unit tests and fuzz suites; any further complexity additions should go into separate helper contracts.
+
 ## Explicit non-goals / remaining risks
 
 These contracts enforce on-chain trust transitions and provide authorized paths, but they do not (and cannot) eliminate:
