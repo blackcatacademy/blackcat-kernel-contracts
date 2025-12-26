@@ -71,7 +71,7 @@ The Trust Kernel cannot “sandbox” a server by itself. Instead:
 - `InstanceController` stores the *commitments* (what must be true),
 - the runtime enforces the policy (what is allowed to happen) and fails closed in production.
 
-See also: `blackcat-kernel-contracts/docs/POLICY_ENFORCEMENT.md`.
+See also: [POLICY_ENFORCEMENT](POLICY_ENFORCEMENT.md).
 
 ### Boot sequence (production posture)
 

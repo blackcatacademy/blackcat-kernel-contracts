@@ -14,8 +14,8 @@ Non-goals:
 - RPC quorum logic (off-chain).
 
 Related:
-- Diagrams: `blackcat-kernel-contracts/docs/SECURITY_FLOWS.md`
-- Spec: `blackcat-kernel-contracts/docs/SPEC.md`
+- Diagrams: [SECURITY_FLOWS](SECURITY_FLOWS.md)
+- Spec: [SPEC](SPEC.md)
 
 ## Global checks (apply to all contracts)
 

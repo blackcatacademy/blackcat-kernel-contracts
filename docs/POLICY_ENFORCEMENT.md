@@ -9,9 +9,9 @@ Important:
 - Enforcing “you must not call X” happens **off-chain**, by ensuring sensitive operations can only succeed when the runtime’s policy checks pass.
 
 Related:
-- `blackcat-kernel-contracts/docs/SPEC.md`
-- `blackcat-kernel-contracts/docs/SECURITY_FLOWS.md`
-- `blackcat-kernel-contracts/docs/THREAT_MODEL.md`
+- [SPEC](SPEC.md)
+- [SECURITY_FLOWS](SECURITY_FLOWS.md)
+- [THREAT_MODEL](THREAT_MODEL.md)
 
 ## What the chain stores vs what the runtime enforces
 

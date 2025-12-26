@@ -15,11 +15,11 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 
 ## Contracts
 
-- `ReleaseRegistry`: global registry of “official” component releases (version → root hash + URI).
-- `InstanceFactory`: creates/clones `InstanceController` per install and runs the setup ceremony (CREATE + CREATE2).
-- `InstanceController`: per-install state machine (propose → stage → activate upgrades), pause/unpause, and history events.
-- `KernelAuthority` (optional): minimal EIP-712 threshold signer authority (multi-device by design without Safe dependency).
-- `ManifestStore` (optional): append-only on-chain blob store for manifests (“full detail” mode availability).
+- [`ReleaseRegistry`](src/ReleaseRegistry.sol): global registry of “official” component releases (version → root hash + URI).
+- [`InstanceFactory`](src/InstanceFactory.sol): creates/clones `InstanceController` per install and runs the setup ceremony (CREATE + CREATE2).
+- [`InstanceController`](src/InstanceController.sol): per-install state machine (propose → stage → activate upgrades), pause/unpause, and history events.
+- [`KernelAuthority`](src/KernelAuthority.sol) (optional): minimal EIP-712 threshold signer authority (multi-device by design without Safe dependency).
+- [`ManifestStore`](src/ManifestStore.sol) (optional): append-only on-chain blob store for manifests (“full detail” mode availability).
 
 ## Docs
 
