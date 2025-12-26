@@ -64,17 +64,17 @@ Important:
 
 If your Foundry version supports the Blockscout verifier (it does in the Docker image):
 
-Set an API key string (Blockscout often ignores it, but Foundry expects one):
+Set an API key string (Blockscout often ignores it, but Foundry expects one). Since we run Foundry in Docker, pass it into the container via `-e`:
 
 ```bash
-export ETHERSCAN_API_KEY="blockscout"
+ETHERSCAN_API_KEY="blockscout"
 
 OWNER_ADDRESS=0x...
 
 CONSTRUCTOR_ARGS=$(docker run --rm --entrypoint cast ghcr.io/foundry-rs/foundry:stable \
   abi-encode "constructor(address)" "$OWNER_ADDRESS")
 
-docker run --rm --entrypoint forge -v "$PWD":/work -w /work ghcr.io/foundry-rs/foundry:stable \
+docker run --rm --entrypoint forge -e ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY" -v "$PWD":/work -w /work ghcr.io/foundry-rs/foundry:stable \
   verify-contract \
   --chain 4207 \
   --verifier blockscout \
@@ -88,7 +88,7 @@ docker run --rm --entrypoint forge -v "$PWD":/work -w /work ghcr.io/foundry-rs/f
 To get the **Standard JSON Input** for manual UI verification:
 
 ```bash
-docker run --rm --entrypoint forge -v "$PWD":/work -w /work ghcr.io/foundry-rs/foundry:stable \
+docker run --rm --entrypoint forge -e ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY" -v "$PWD":/work -w /work ghcr.io/foundry-rs/foundry:stable \
   verify-contract \
   --show-standard-json-input \
   --chain 4207 \
