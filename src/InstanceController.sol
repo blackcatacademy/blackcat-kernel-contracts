@@ -434,7 +434,9 @@ contract InstanceController {
 
     function startRootAuthorityTransfer(address newValue) external onlyRootAuthority {
         if (newValue == address(0)) revert ZeroRootAuthority();
-        rootAuthorityTransferNonce += 1;
+        unchecked {
+            rootAuthorityTransferNonce += 1;
+        }
         pendingRootAuthority = newValue;
         emit RootAuthorityTransferStarted(rootAuthority, newValue);
     }
@@ -478,7 +480,9 @@ contract InstanceController {
 
     function startUpgradeAuthorityTransfer(address newValue) external onlyRootAuthority {
         if (newValue == address(0)) revert ZeroUpgradeAuthority();
-        upgradeAuthorityTransferNonce += 1;
+        unchecked {
+            upgradeAuthorityTransferNonce += 1;
+        }
         pendingUpgradeAuthority = newValue;
         emit UpgradeAuthorityTransferStarted(upgradeAuthority, newValue);
     }
@@ -522,7 +526,9 @@ contract InstanceController {
 
     function startEmergencyAuthorityTransfer(address newValue) external onlyRootAuthority {
         if (newValue == address(0)) revert ZeroEmergencyAuthority();
-        emergencyAuthorityTransferNonce += 1;
+        unchecked {
+            emergencyAuthorityTransferNonce += 1;
+        }
         pendingEmergencyAuthority = newValue;
         emit EmergencyAuthorityTransferStarted(emergencyAuthority, newValue);
     }
@@ -647,7 +653,9 @@ contract InstanceController {
 
     function startReporterAuthorityTransfer(address newValue) external onlyRootAuthority {
         if (newValue == address(0)) revert ZeroReporterAuthority();
-        reporterAuthorityTransferNonce += 1;
+        unchecked {
+            reporterAuthorityTransferNonce += 1;
+        }
         pendingReporterAuthority = newValue;
         emit ReporterAuthorityTransferStarted(reporterAuthority, newValue);
     }
@@ -793,7 +801,9 @@ contract InstanceController {
             _requireRootComponent(registry, compat.root, expected);
         }
 
-        rollbackNonce += 1;
+        unchecked {
+            rollbackNonce += 1;
+        }
 
         bytes32 previousRoot = activeRoot;
         activeRoot = compat.root;
@@ -1077,7 +1087,9 @@ contract InstanceController {
         external
         onlyReporterAuthority
     {
-        reporterNonce += 1;
+        unchecked {
+            reporterNonce += 1;
+        }
         _checkIn(msg.sender, observedRoot, observedUriHash, observedPolicyHash);
     }
 
@@ -1100,7 +1112,9 @@ contract InstanceController {
         if (!_isValidSignatureNow(reporter, digest, signature)) revert InvalidReporterSignature();
         emit AuthoritySignatureConsumed(reporter, digest, msg.sender);
 
-        reporterNonce += 1;
+        unchecked {
+            reporterNonce += 1;
+        }
         _checkIn(reporter, observedRoot, observedUriHash, observedPolicyHash);
     }
 
@@ -1121,7 +1135,11 @@ contract InstanceController {
             base = genesisAt;
         }
 
-        if (block.timestamp <= uint256(base) + uint256(maxAgeSec)) {
+        uint256 cutoff;
+        unchecked {
+            cutoff = uint256(base) + uint256(maxAgeSec);
+        }
+        if (block.timestamp <= cutoff) {
             return false;
         }
 
@@ -1156,7 +1174,9 @@ contract InstanceController {
             revert NotIncidentReporter();
         }
 
-        incidentNonce += 1;
+        unchecked {
+            incidentNonce += 1;
+        }
         _reportIncident(msg.sender, incidentHash);
     }
 
@@ -1171,7 +1191,9 @@ contract InstanceController {
         if (authority == address(0)) revert InvalidIncidentSignature();
         emit AuthoritySignatureConsumed(authority, digest, msg.sender);
 
-        incidentNonce += 1;
+        unchecked {
+            incidentNonce += 1;
+        }
         _reportIncident(authority, incidentHash);
     }
 
@@ -1194,7 +1216,9 @@ contract InstanceController {
             _requireRootComponent(registry, root, expected);
         }
 
-        pendingUpgradeNonce += 1;
+        unchecked {
+            pendingUpgradeNonce += 1;
+        }
         uint256 proposalNonce = pendingUpgradeNonce;
 
         pendingUpgrade = UpgradeProposal({
@@ -1225,7 +1249,9 @@ contract InstanceController {
             if (rel.root == bytes32(0)) revert ReleaseNotFound();
             if (!IReleaseRegistry(registry).isTrustedRoot(rel.root)) revert RootNotTrusted();
 
-            pendingUpgradeNonce += 1;
+            unchecked {
+                pendingUpgradeNonce += 1;
+            }
             uint256 proposalNonce = pendingUpgradeNonce;
 
             pendingUpgrade = UpgradeProposal({
@@ -1341,8 +1367,18 @@ contract InstanceController {
 
     function _activateUpgrade(UpgradeProposal memory upgrade) private {
         if (upgrade.root == bytes32(0)) revert NoPendingUpgrade();
-        if (block.timestamp < uint256(upgrade.createdAt) + uint256(minUpgradeDelaySec)) revert UpgradeTimelocked();
-        if (block.timestamp > uint256(upgrade.createdAt) + uint256(upgrade.ttlSec)) revert UpgradeExpired();
+        uint256 createdAt = uint256(upgrade.createdAt);
+        uint256 timelockUntil;
+        unchecked {
+            timelockUntil = createdAt + uint256(minUpgradeDelaySec);
+        }
+        if (block.timestamp < timelockUntil) revert UpgradeTimelocked();
+
+        uint256 expiresAt;
+        unchecked {
+            expiresAt = createdAt + uint256(upgrade.ttlSec);
+        }
+        if (block.timestamp > expiresAt) revert UpgradeExpired();
 
         address registry = releaseRegistry;
         if (registry != address(0)) {
@@ -1368,7 +1404,10 @@ contract InstanceController {
 
         uint64 windowSec = compatibilityWindowSec;
         if (windowSec != 0) {
-            uint64 until = uint64(block.timestamp + windowSec);
+            uint64 until;
+            unchecked {
+                until = uint64(block.timestamp + uint256(windowSec));
+            }
             compatibilityState = CompatibilityState({
                 root: previousRoot, uriHash: previousUriHash, policyHash: previousPolicyHash, until: until
             });
@@ -1441,7 +1480,9 @@ contract InstanceController {
     }
 
     function _recordIncident(address by, bytes32 incidentHash) private {
-        incidentCount += 1;
+        unchecked {
+            incidentCount += 1;
+        }
         lastIncidentAt = uint64(block.timestamp);
         lastIncidentHash = incidentHash;
         lastIncidentBy = by;
@@ -1481,7 +1522,9 @@ contract InstanceController {
         if (!paused) {
             _setPaused(by, true);
         } else {
-            pauseNonce += 1;
+            unchecked {
+                pauseNonce += 1;
+            }
         }
     }
 
@@ -1523,7 +1566,9 @@ contract InstanceController {
             return;
         }
 
-        pauseNonce += 1;
+        unchecked {
+            pauseNonce += 1;
+        }
         paused = newPaused;
         if (newPaused) {
             emit Paused(by);
