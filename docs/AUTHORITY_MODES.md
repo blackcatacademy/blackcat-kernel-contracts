@@ -39,22 +39,22 @@ flowchart LR
   D1 --> Safe
   D2 --> Safe
   D3 --> Safe
-  Safe -->|"tx (msg.sender)"| IC
-  Safe -->|"tx (msg.sender)"| RR
-  Safe -->|"tx (msg.sender)"| IF
-  Safe -->|"tx (msg.sender)"| MS
+  Safe -->|tx| IC
+  Safe -->|tx| RR
+  Safe -->|tx| IF
+  Safe -->|tx| MS
 
   %% Mode B: KernelAuthority
   D1 --> KA
   D2 --> KA
-  KA -->|"execute()/executeBatch()"| IC
-  KA -->|"execute()/executeBatch()"| RR
-  KA -->|"execute()/executeBatch()"| IF
-  KA -->|"execute()/executeBatch()"| MS
+  KA -->|execute or batch| IC
+  KA -->|execute or batch| RR
+  KA -->|execute or batch| IF
+  KA -->|execute or batch| MS
 
   %% Mode C: EOA
   D1 --> EOA
-  EOA -->|"tx (msg.sender)"| IC
+  EOA -->|tx| IC
 ```
 
 ## Visual overview (relayed signatures)

@@ -49,10 +49,10 @@ flowchart TB
   end
 
   App -->|all sensitive ops| PEP
-  PEP -->|verify state (quorum)| IC
-  PEP -->|verify trust (optional)| RR
-  PEP -->|fetch bytes (optional)| MS
-  PEP -->|approved decrypt/write| Secrets
+  PEP -->|verify state quorum| IC
+  PEP -->|verify trust optional| RR
+  PEP -->|fetch bytes optional| MS
+  PEP -->|approved decrypt or write| Secrets
   Secrets -->|approved write| DB
 ```
 

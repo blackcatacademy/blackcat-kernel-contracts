@@ -30,16 +30,16 @@ flowchart TB
     KA["KernelAuthority (optional)\n- threshold signer\n- EIP-1271"]
   end
 
-  Builder -->|root/uriHash/metaHash| RR
-  Builder -->|chunks (optional)| MS
+  Builder -->|root uriHash metaHash| RR
+  Builder -->|chunks optional| MS
 
-  Signer -->|EIP-712 signatures| Relayer
+  Signer -->|EIP712 signatures| Relayer
   Relayer -->|tx| IF
-  IF -->|initialize(...)| IC
+  IF -->|initialize| IC
   IC -->|optional enforcement| RR
 
-  Runtime -->|eth_call (quorum)| IC
-  Runtime -->|eth_call (quorum)| RR
+  Runtime -->|eth_call quorum| IC
+  Runtime -->|eth_call quorum| RR
   Runtime -->|optional fetch| Builder
 ```
 
@@ -115,7 +115,7 @@ sequenceDiagram
 flowchart TB
   Req["Incoming request / job"] --> PEP["Back Controller (PEP)\nverify state + policy"]
   PEP -->|"OK"| Do["Perform sensitive op\n(DB write / decrypt / rotate key)"]
-  PEP -->|"Mismatch / uncertain"| Deny["Deny / degrade\n(read-only, buffer, or hard fail)"]
+  PEP -->|"Mismatch or uncertain"| Deny["Deny / degrade\n(read-only, buffer, or hard fail)"]
   Deny --> Incident["Optional: reportIncident / checkIn"]
 ```
 
@@ -418,10 +418,10 @@ Attestations are generic `key -> value` slots (root-controlled) used to pin extr
 
 ```mermaid
 flowchart LR
-  Root["rootAuthority"] -->|setAttestation(key,value)| IC["InstanceController"]
+  Root["rootAuthority"] -->|setAttestation key value| IC["InstanceController"]
   IC -->|AttestationSet event| Chain["On-chain log"]
 
-  Root -->|lockAttestationKey(key)| IC
+  Root -->|lockAttestationKey key| IC
   IC -->|AttestationLocked event| Chain
 
   Bad["Attempted mutation after lock"] --> IC
@@ -450,8 +450,8 @@ Recommended pattern:
 flowchart TB
   Start["Start"] --> Probe["Probe host capabilities\n(POSIX perms, ownership APIs,\nread-only mounts, container FS)"]
 
-  Probe -->|"Secure system path available\n(e.g. /etc/blackcat)\nand permission checks pass"| SystemPath["System path\n/etc/blackcat/runtime.json"]
-  Probe -->|"No secure system path\n(fallback)"| AppPath["App-private path\n(var/lib/... or user config dir)"]
+  Probe -->|"Secure system path available\nfor example /etc/blackcat\nand permission checks pass"| SystemPath["System path\n/etc/blackcat/runtime.json"]
+  Probe -->|"No secure system path\nfallback"| AppPath["App-private path\nvar/lib or user config dir"]
 
   SystemPath --> Checks
   AppPath --> Checks

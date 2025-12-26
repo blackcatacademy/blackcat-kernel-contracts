@@ -11,7 +11,7 @@ The core idea:
 
 This repository is intentionally **Solidity-only**. Runtime policy, config permission checks, and CLI/installer flows live in other repos.
 
-## Contracts (planned)
+## Contracts
 
 - `ReleaseRegistry`: global registry of “official” component releases (version → root hash + URI).
 - `InstanceFactory`: creates/clones `InstanceController` per install and runs the setup ceremony (CREATE + CREATE2).
@@ -19,17 +19,19 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 - `KernelAuthority` (optional): minimal EIP-712 threshold signer authority (multi-device by design without Safe dependency).
 - `ManifestStore` (optional): append-only on-chain blob store for manifests (“full detail” mode availability).
 
-## Spec
+## Docs
 
-- `blackcat-kernel-contracts/docs/SPEC.md`
-- `blackcat-kernel-contracts/docs/SECURITY_FLOWS.md`
-- `blackcat-kernel-contracts/docs/THREAT_MODEL.md`
-- `blackcat-kernel-contracts/docs/POLICY_ENFORCEMENT.md`
-- `blackcat-kernel-contracts/docs/AUDIT_CHECKLIST.md`
-- `blackcat-kernel-contracts/docs/AUDIT_REPORT.md`
-- `blackcat-kernel-contracts/docs/AUTHORITY_MODES.md`
-- `blackcat-kernel-contracts/docs/ROADMAP.md`
-- `blackcat-kernel-contracts/docs/OPERATIONS.md`
+| Document | What it covers |
+|---|---|
+| [SPEC](docs/SPEC.md) | On-chain structures and invariants |
+| [SECURITY_FLOWS](docs/SECURITY_FLOWS.md) | Diagram-first flows (Mermaid) |
+| [THREAT_MODEL](docs/THREAT_MODEL.md) | Threat model + assumptions |
+| [POLICY_ENFORCEMENT](docs/POLICY_ENFORCEMENT.md) | Runtime PEP (“Back Controller”) design |
+| [AUTHORITY_MODES](docs/AUTHORITY_MODES.md) | Safe vs `KernelAuthority` vs EOA |
+| [OPERATIONS](docs/OPERATIONS.md) | Operational flows (bots, incidents, upgrades) |
+| [AUDIT_CHECKLIST](docs/AUDIT_CHECKLIST.md) | Practical pre-production checklist |
+| [AUDIT_REPORT](docs/AUDIT_REPORT.md) | Internal audit notes + fixes |
+| [ROADMAP](docs/ROADMAP.md) | Planned work |
 
 ## Governance model (planned)
 
@@ -56,45 +58,14 @@ Run via Docker (recommended for consistent solc/forge versions):
 
 ## Deployment (Foundry)
 
-Scripts live in `blackcat-kernel-contracts/script/` and intentionally avoid external dependencies.
+Scripts live in [`script/`](script/) and intentionally avoid external dependencies.
 
-- Deploy registry + factory: `blackcat-kernel-contracts/script/DeployAll.s.sol`
-- Deploy only registry: `blackcat-kernel-contracts/script/DeployReleaseRegistry.s.sol`
-- Deploy only factory: `blackcat-kernel-contracts/script/DeployInstanceFactory.s.sol`
-- Deploy ManifestStore (optional): `blackcat-kernel-contracts/script/DeployManifestStore.s.sol`
-- Publish/revoke releases: `blackcat-kernel-contracts/script/PublishRelease.s.sol`, `blackcat-kernel-contracts/script/RevokeRelease.s.sol`
-- Per-install instance + upgrades:
-  - `blackcat-kernel-contracts/script/CreateInstanceDeterministic.s.sol`
-  - `blackcat-kernel-contracts/script/ProposeUpgrade.s.sol`
-  - `blackcat-kernel-contracts/script/ProposeUpgradeByRelease.s.sol`
-  - `blackcat-kernel-contracts/script/ActivateUpgradeExpected.s.sol`
-  - `blackcat-kernel-contracts/script/CancelUpgradeExpected.s.sol`
-- Pause/unpause: `blackcat-kernel-contracts/script/Pause.s.sol`, `blackcat-kernel-contracts/script/Unpause.s.sol`
-- Monitoring / ops:
-  - `blackcat-kernel-contracts/script/CheckIn.s.sol`
-  - `blackcat-kernel-contracts/script/ReportIncident.s.sol`
-  - `blackcat-kernel-contracts/script/SetAttestation.s.sol`, `blackcat-kernel-contracts/script/ClearAttestation.s.sol`
-  - Attestation write-once: `blackcat-kernel-contracts/script/SetAttestationAndLock.s.sol`, `blackcat-kernel-contracts/script/LockAttestationKey.s.sol`
-  - `blackcat-kernel-contracts/script/SetCompatibilityWindow.s.sol`, `blackcat-kernel-contracts/script/ClearCompatibilityState.s.sol`
-  - Break-glass rollback: `blackcat-kernel-contracts/script/RollbackToCompatibilityState.s.sol`
-  - Relayer rollback: `blackcat-kernel-contracts/script/RollbackToCompatibilityStateAuthorized.s.sol`
-  - `blackcat-kernel-contracts/script/LockCompatibilityWindow.s.sol`
-  - `blackcat-kernel-contracts/script/SetMinUpgradeDelay.s.sol`
-  - `blackcat-kernel-contracts/script/LockMinUpgradeDelay.s.sol`
-  - `blackcat-kernel-contracts/script/SetAutoPauseOnBadCheckIn.s.sol`
-  - `blackcat-kernel-contracts/script/LockAutoPauseOnBadCheckIn.s.sol`
-  - `blackcat-kernel-contracts/script/SetEmergencyCanUnpause.s.sol`
-  - `blackcat-kernel-contracts/script/LockEmergencyCanUnpause.s.sol`
-  - `blackcat-kernel-contracts/script/SetExpectedComponentId.s.sol`
-  - `blackcat-kernel-contracts/script/LockExpectedComponentId.s.sol`
-  - `blackcat-kernel-contracts/script/ClearReporterAuthority.s.sol`
-  - `blackcat-kernel-contracts/script/SetReleaseRegistry.s.sol`
-  - `blackcat-kernel-contracts/script/LockReleaseRegistry.s.sol`
-  - Authority rotation helpers:
-    - Root: `blackcat-kernel-contracts/script/StartRootAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptRootAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelRootAuthorityTransfer.s.sol`
-    - Upgrade: `blackcat-kernel-contracts/script/StartUpgradeAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptUpgradeAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelUpgradeAuthorityTransfer.s.sol`
-    - Emergency: `blackcat-kernel-contracts/script/StartEmergencyAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptEmergencyAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelEmergencyAuthorityTransfer.s.sol`
-    - Reporter: `blackcat-kernel-contracts/script/StartReporterAuthorityTransfer.s.sol`, `blackcat-kernel-contracts/script/AcceptReporterAuthority.s.sol`, `blackcat-kernel-contracts/script/CancelReporterAuthorityTransfer.s.sol`
-- Upload ManifestStore blobs: `blackcat-kernel-contracts/script/UploadManifestBlob.s.sol`
+- Deploy: [DeployAll.s.sol](script/DeployAll.s.sol), [DeployReleaseRegistry.s.sol](script/DeployReleaseRegistry.s.sol), [DeployInstanceFactory.s.sol](script/DeployInstanceFactory.s.sol), [DeployManifestStore.s.sol](script/DeployManifestStore.s.sol)
+- Release publishing: [PublishRelease.s.sol](script/PublishRelease.s.sol), [PublishReleaseAuthorized.s.sol](script/PublishReleaseAuthorized.s.sol), [PublishReleaseBatchAuthorized.s.sol](script/PublishReleaseBatchAuthorized.s.sol)
+- Release revocation: [RevokeRelease.s.sol](script/RevokeRelease.s.sol), [RevokeReleaseAuthorized.s.sol](script/RevokeReleaseAuthorized.s.sol), [RevokeReleaseBatchAuthorized.s.sol](script/RevokeReleaseBatchAuthorized.s.sol), [RevokeByRootAuthorized.s.sol](script/RevokeByRootAuthorized.s.sol)
+- Instances + upgrades: [CreateInstanceDeterministic.s.sol](script/CreateInstanceDeterministic.s.sol), [ProposeUpgrade.s.sol](script/ProposeUpgrade.s.sol), [ProposeUpgradeByRelease.s.sol](script/ProposeUpgradeByRelease.s.sol), [ActivateUpgradeExpected.s.sol](script/ActivateUpgradeExpected.s.sol), [CancelUpgradeExpected.s.sol](script/CancelUpgradeExpected.s.sol), [FinalizeProduction.s.sol](script/FinalizeProduction.s.sol)
+- Monitoring + incidents: [CheckIn.s.sol](script/CheckIn.s.sol), [ReportIncident.s.sol](script/ReportIncident.s.sol), [PauseIfStale.s.sol](script/PauseIfStale.s.sol), [PauseIfActiveRootUntrusted.s.sol](script/PauseIfActiveRootUntrusted.s.sol)
+- Attestations: [SetAttestation.s.sol](script/SetAttestation.s.sol), [ClearAttestation.s.sol](script/ClearAttestation.s.sol), [SetAttestationAndLock.s.sol](script/SetAttestationAndLock.s.sol), [LockAttestationKey.s.sol](script/LockAttestationKey.s.sol)
+- Manifest blobs: [UploadManifestBlob.s.sol](script/UploadManifestBlob.s.sol)
 
 **Note:** contracts are not audited. Do not use in production until reviewed.
