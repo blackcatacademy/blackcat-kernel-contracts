@@ -9,10 +9,17 @@
       .gA { fill: #f8fafc; stroke: #64748b; stroke-width: 2; rx: 18; }
       .gB { fill: #ecfeff; stroke: #06b6d4; stroke-width: 2; rx: 18; }
       .gC { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 2; rx: 18; }
-      .arrow { stroke: #334155; stroke-width: 2; fill: none; marker-end: url(#arrowHead); }
+      .arrow { stroke-width: 2; fill: none; }
+      .arrowOpt { stroke-width: 2; stroke-dasharray: 6 6; fill: none; }
     </style>
-    <marker id="arrowHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    <marker id="arrowHeadRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e03131"/>
+    </marker>
+    <marker id="arrowHeadGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f9e44"/>
+    </marker>
+    <marker id="arrowHeadBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1971c2"/>
     </marker>
   </defs>
 
@@ -59,26 +66,25 @@
   <text class="boxTitle" x="900" y="445">ManifestStore</text>
 
   <!-- Arrows: devices -> authorities -->
-  <path class="arrow" d="M 320 195 L 480 200" />
-  <path class="arrow" d="M 320 285 L 480 200" />
-  <path class="arrow" d="M 320 375 L 480 200" />
+  <path class="arrow" d="M 320 160 L 480 160" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 320 320 L 480 240" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+  <path class="arrow" d="M 320 340 L 480 160" stroke="#1971c2" marker-end="url(#arrowHeadBlue)" />
 
-  <path class="arrow" d="M 320 195 L 480 310" />
-  <path class="arrow" d="M 320 285 L 480 310" />
+  <path class="arrow" d="M 320 160 L 480 270" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 320 320 L 480 350" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
 
-  <path class="arrow" d="M 320 195 L 480 420" />
+  <path class="arrowOpt" d="M 320 160 L 480 380" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
 
   <!-- Arrows: authorities -> targets -->
-  <path class="arrow" d="M 720 200 L 880 195" />
-  <path class="arrow" d="M 720 200 L 880 280" />
-  <path class="arrow" d="M 720 200 L 880 365" />
-  <path class="arrow" d="M 720 200 L 880 450" />
+  <path class="arrow" d="M 720 160 L 880 160" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 720 160 L 880 245" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 720 160 L 880 330" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
+  <path class="arrow" d="M 720 160 L 880 415" stroke="#e03131" marker-end="url(#arrowHeadRed)" />
 
-  <path class="arrow" d="M 720 310 L 880 195" />
-  <path class="arrow" d="M 720 310 L 880 280" />
-  <path class="arrow" d="M 720 310 L 880 365" />
-  <path class="arrow" d="M 720 310 L 880 450" />
+  <path class="arrow" d="M 720 270 L 880 160" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+  <path class="arrow" d="M 720 270 L 880 245" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+  <path class="arrow" d="M 720 270 L 880 330" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
+  <path class="arrow" d="M 720 270 L 880 415" stroke="#2f9e44" marker-end="url(#arrowHeadGreen)" />
 
-  <path class="arrow" d="M 720 420 L 880 195" />
+  <path class="arrowOpt" d="M 720 380 L 880 160" stroke="#1971c2" marker-end="url(#arrowHeadBlue)" />
 </svg>
-
