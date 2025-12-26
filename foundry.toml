@@ -7,6 +7,10 @@ optimizer = true
 optimizer_runs = 1
 via_ir = true
 bytecode_hash = "ipfs"
+fs_permissions = [
+  { access = "read", path = "./dist" },
+  { access = "read", path = "./tmp" },
+]
 
 [rpc_endpoints]
 edgen = "https://rpc.layeredge.io"
