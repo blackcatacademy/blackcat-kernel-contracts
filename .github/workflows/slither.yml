@@ -1,0 +1,28 @@
+name: Slither
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  slither:
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Slither (static analysis)
+        run: |
+          set -euo pipefail
+
+          TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-trailofbits/eth-security-toolbox@sha256:726b78aac10d4113a81ccc9db62bc2e781a2d136dcb10ad245a6bd1950c42744}"
+
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":/repo \
+            -w /repo \
+            "$TOOLBOX_IMAGE" \
+            slither . \
+              --exclude-dependencies \
+              --filter-paths "test|script|out|broadcast|cache|deployments" \
+              --print human-summary
