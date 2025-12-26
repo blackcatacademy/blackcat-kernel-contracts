@@ -6,7 +6,7 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {KernelAuthority} from "../src/KernelAuthority.sol";
+import {BlackCatKernelAuthorityV1 as KernelAuthority} from "../src/KernelAuthority.sol";
 
 contract ValueReceiver {
     uint256 public receivedCount;

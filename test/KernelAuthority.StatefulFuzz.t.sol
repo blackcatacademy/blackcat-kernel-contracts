@@ -6,7 +6,7 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {KernelAuthority} from "../src/KernelAuthority.sol";
+import {BlackCatKernelAuthorityV1 as KernelAuthority} from "../src/KernelAuthority.sol";
 
 contract StatefulCounter {
     uint256 public n;
@@ -175,4 +175,3 @@ contract KernelAuthorityStatefulFuzzTest is TestBase {
         return abi.encodePacked(r, s_, v);
     }
 }
-

@@ -6,8 +6,8 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {InstanceController} from "../src/InstanceController.sol";
-import {InstanceFactory} from "../src/InstanceFactory.sol";
+import {BlackCatInstanceControllerV1 as InstanceController} from "../src/InstanceController.sol";
+import {BlackCatInstanceFactoryV1 as InstanceFactory} from "../src/InstanceFactory.sol";
 
 contract AlwaysTrustedRegistry {
     function isTrustedRoot(bytes32) external pure returns (bool) {

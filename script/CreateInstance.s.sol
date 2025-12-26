@@ -5,7 +5,7 @@
 
 pragma solidity ^0.8.24;
 
-import {InstanceFactory} from "../src/InstanceFactory.sol";
+import {BlackCatInstanceFactoryV1 as InstanceFactory} from "../src/InstanceFactory.sol";
 import {FoundryVm} from "./FoundryVm.sol";
 
 /// @notice Create a per-install InstanceController (non-deterministic) via `InstanceFactory.createInstance(...)`.
@@ -43,4 +43,3 @@ contract CreateInstance {
         vm.stopBroadcast();
     }
 }
-

@@ -28,7 +28,7 @@ interface IReleaseRegistryByRoot {
 
 /// @notice Per-install trust authority for a single BlackCat deployment.
 /// @dev Skeleton contract (not audited, not production-ready).
-contract InstanceController {
+contract BlackCatInstanceControllerV1 {
     bytes32 private constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant NAME_HASH = keccak256(bytes("BlackCatInstanceController"));

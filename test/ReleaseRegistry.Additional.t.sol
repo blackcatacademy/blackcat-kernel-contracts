@@ -6,8 +6,8 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {KernelAuthority} from "../src/KernelAuthority.sol";
-import {ReleaseRegistry} from "../src/ReleaseRegistry.sol";
+import {BlackCatKernelAuthorityV1 as KernelAuthority} from "../src/KernelAuthority.sol";
+import {BlackCatReleaseRegistryV1 as ReleaseRegistry} from "../src/ReleaseRegistry.sol";
 
 contract ReleaseRegistryAdditionalTest is TestBase {
     struct Signer {

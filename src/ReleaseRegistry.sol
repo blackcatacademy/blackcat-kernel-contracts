@@ -7,7 +7,7 @@ pragma solidity ^0.8.24;
 
 /// @notice Global registry of official release roots for the BlackCat ecosystem.
 /// @dev Skeleton contract (not audited, not production-ready).
-contract ReleaseRegistry {
+contract BlackCatReleaseRegistryV1 {
     bytes32 private constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant NAME_HASH = keccak256(bytes("BlackCatReleaseRegistry"));

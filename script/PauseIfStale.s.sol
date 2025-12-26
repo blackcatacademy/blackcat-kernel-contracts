@@ -5,7 +5,7 @@
 
 pragma solidity ^0.8.24;
 
-import {InstanceController} from "../src/InstanceController.sol";
+import {BlackCatInstanceControllerV1 as InstanceController} from "../src/InstanceController.sol";
 import {FoundryVm} from "./FoundryVm.sol";
 
 /// @notice Permissionless safety: pause the controller if check-ins are stale beyond `maxCheckInAgeSec`.
@@ -26,4 +26,3 @@ contract PauseIfStale {
         vm.stopBroadcast();
     }
 }
-

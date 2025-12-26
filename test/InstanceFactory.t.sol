@@ -6,9 +6,9 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {InstanceController} from "../src/InstanceController.sol";
-import {InstanceFactory} from "../src/InstanceFactory.sol";
-import {KernelAuthority} from "../src/KernelAuthority.sol";
+import {BlackCatInstanceControllerV1 as InstanceController} from "../src/InstanceController.sol";
+import {BlackCatInstanceFactoryV1 as InstanceFactory} from "../src/InstanceFactory.sol";
+import {BlackCatKernelAuthorityV1 as KernelAuthority} from "../src/KernelAuthority.sol";
 
 contract InstanceFactoryTest is TestBase {
     InstanceFactory private factory;

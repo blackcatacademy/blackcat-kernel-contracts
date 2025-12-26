@@ -5,7 +5,7 @@
 
 pragma solidity ^0.8.24;
 
-import {ManifestStore} from "../src/ManifestStore.sol";
+import {BlackCatManifestStoreV1 as ManifestStore} from "../src/ManifestStore.sol";
 import {FoundryVm} from "./FoundryVm.sol";
 
 /// @notice Deploy ManifestStore (optional on-chain blob store).

@@ -15,7 +15,7 @@ pragma solidity ^0.8.24;
 /// - the runtime maintains an append-only audit log and periodically commits a Merkle root,
 /// - reporter authority is stored in `InstanceController.reporterAuthority`,
 /// - in production, the runtime should fail closed even without this hub; this is an additional integrity/audit signal.
-contract AuditCommitmentHub {
+contract BlackCatAuditCommitmentHubV1 {
     bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
     uint256 private constant SECP256K1N_HALF = 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0;
     uint256 private constant EIP2098_S_MASK = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
@@ -183,4 +183,3 @@ contract AuditCommitmentHub {
         return recovered;
     }
 }
-

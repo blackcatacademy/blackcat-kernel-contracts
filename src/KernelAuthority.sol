@@ -7,7 +7,7 @@ pragma solidity ^0.8.24;
 
 /// @notice Minimal EIP-712 threshold signer authority (multi-device by design).
 /// @dev Skeleton contract (not audited, not production-ready).
-contract KernelAuthority {
+contract BlackCatKernelAuthorityV1 {
     bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
 
     bytes32 private constant DOMAIN_TYPEHASH =

@@ -6,10 +6,10 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
-import {AuditCommitmentHub} from "../src/AuditCommitmentHub.sol";
-import {InstanceController} from "../src/InstanceController.sol";
-import {InstanceFactory} from "../src/InstanceFactory.sol";
-import {KernelAuthority} from "../src/KernelAuthority.sol";
+import {BlackCatAuditCommitmentHubV1 as AuditCommitmentHub} from "../src/AuditCommitmentHub.sol";
+import {BlackCatInstanceControllerV1 as InstanceController} from "../src/InstanceController.sol";
+import {BlackCatInstanceFactoryV1 as InstanceFactory} from "../src/InstanceFactory.sol";
+import {BlackCatKernelAuthorityV1 as KernelAuthority} from "../src/KernelAuthority.sol";
 
 contract AuditCommitmentHubTest is TestBase {
     struct Signer {
@@ -128,4 +128,3 @@ contract AuditCommitmentHubTest is TestBase {
         return abi.encodePacked(r, s, v);
     }
 }
-
