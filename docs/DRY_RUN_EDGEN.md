@@ -2,6 +2,9 @@
 
 Goal: deploy contracts and exercise the most important safety flows against a real EVM chain.
 
+If you want **multi-device** signing without Safe, see:
+- [DRY_RUN_EDGEN_KERNELAUTHORITY](DRY_RUN_EDGEN_KERNELAUTHORITY.md)
+
 Chain:
 - RPC: `https://rpc.layeredge.io`
 - chain_id: `4207`

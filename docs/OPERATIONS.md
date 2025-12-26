@@ -191,3 +191,4 @@ Consumers must:
 
 Step-by-step dry run against Edgen Chain:
 - [DRY_RUN_EDGEN](DRY_RUN_EDGEN.md)
+- [DRY_RUN_EDGEN_KERNELAUTHORITY](DRY_RUN_EDGEN_KERNELAUTHORITY.md)
