@@ -55,6 +55,8 @@ Additional suites (focused on missing edges / failure paths):
 Stateful fuzz (“invariant-ish”) suites:
 - `test/InstanceController.StatefulFuzz.t.sol`
 - `test/ReleaseRegistry.StatefulFuzz.t.sol`
+- `test/ManifestStore.StatefulFuzz.t.sol`
+- `test/KernelAuthority.StatefulFuzz.t.sol`
 
 The tests intentionally include:
 - success paths (expected state transitions),
