@@ -71,10 +71,9 @@
 
   <!-- Arrows -->
   <path class="arrow" d="M 600 280 L 600 310" />
-  <path class="arrow" d="M 350 195 L 850 245" />
-  <path class="arrow" d="M 350 405 L 850 270" />
-  <path class="arrow" d="M 350 510 L 460 350" />
-  <path class="arrow" d="M 990 460 L 990 320" />
+  <path class="arrow" d="M 350 151 L 852 211" />
+  <path class="arrow" d="M 351 449 L 851 319" />
+  <path class="arrow" d="M 350 553 L 598 409" />
+  <path class="arrow" d="M 1130 459 L 1129 320" />
   <path class="arrow" d="M 850 405 L 850 265" />
 </svg>
-
