@@ -26,3 +26,46 @@ jobs:
               --exclude-dependencies \
               --filter-paths "test|script|out|broadcast|cache|deployments" \
               --print human-summary
+
+          # Enforce that we keep High/Medium findings at 0.
+          # Slither may exit non-zero when findings are present, so generate JSON in a second pass
+          # and evaluate severity counts ourselves.
+          SLITHER_JSON="slither-report.json"
+          rm -f "$SLITHER_JSON"
+
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":/repo \
+            -w /repo \
+            "$TOOLBOX_IMAGE" \
+            slither . \
+              --exclude-dependencies \
+              --filter-paths "test|script|out|broadcast|cache|deployments" \
+              --json "$SLITHER_JSON" \
+              >/dev/null || true
+
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from collections import Counter
+
+          path = "slither-report.json"
+          if not os.path.exists(path):
+              print("slither: missing JSON output", file=sys.stderr)
+              sys.exit(2)
+
+          with open(path, "r", encoding="utf-8") as f:
+              report = json.load(f)
+
+          impacts = Counter()
+          for detector in report.get("results", {}).get("detectors", []):
+              impacts[detector.get("impact", "Unknown")] += 1
+
+          high = impacts.get("High", 0)
+          medium = impacts.get("Medium", 0)
+          print(f"slither: High={high} Medium={medium} Low={impacts.get('Low', 0)} Info={impacts.get('Informational', 0)}")
+          if high or medium:
+              sys.exit(1)
+          PY
+
+          rm -f "$SLITHER_JSON"
