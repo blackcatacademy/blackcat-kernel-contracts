@@ -18,14 +18,17 @@ Note:
 From `blackcat-kernel-contracts/`:
 
 ```bash
+# Use the same toolchain as CI by default.
+export FOUNDRY_IMAGE="${FOUNDRY_IMAGE:-ghcr.io/foundry-rs/foundry:stable}"
+
 # format check
-docker run --rm -v "$PWD":/app -w /app --entrypoint forge ghcr.io/foundry-rs/foundry:latest fmt --check
+docker run --rm -v "$PWD":/app -w /app --entrypoint forge "$FOUNDRY_IMAGE" fmt --check
 
 # tests (required; InstanceController is built via IR)
-docker run --rm -v "$PWD":/app -w /app --entrypoint forge ghcr.io/foundry-rs/foundry:latest test --via-ir
+docker run --rm -v "$PWD":/app -w /app --entrypoint forge "$FOUNDRY_IMAGE" test --via-ir
 
 # size gate (EIP-170)
-docker run --rm -v "$PWD":/app -w /app --entrypoint forge ghcr.io/foundry-rs/foundry:latest build --via-ir --skip test --skip script --sizes
+docker run --rm -v "$PWD":/app -w /app --entrypoint forge "$FOUNDRY_IMAGE" build --via-ir --skip test --skip script --sizes
 ```
 
 CI runs:
@@ -48,6 +51,10 @@ Additional suites (focused on missing edges / failure paths):
 - `test/ReleaseRegistry.Additional.t.sol`
 - `test/ManifestStore.Additional.t.sol`
 - `test/KernelAuthority.Additional.t.sol`
+
+Stateful fuzz (“invariant-ish”) suites:
+- `test/InstanceController.StatefulFuzz.t.sol`
+- `test/ReleaseRegistry.StatefulFuzz.t.sol`
 
 The tests intentionally include:
 - success paths (expected state transitions),

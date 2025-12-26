@@ -57,8 +57,12 @@ Dev stack: Foundry (`forge`).
 
 Run via Docker (recommended for consistent solc/forge versions):
 
-- Format: `docker run --rm -v "$PWD":/app -w /app --entrypoint forge ghcr.io/foundry-rs/foundry:latest fmt`
-- Test: `docker run --rm -v "$PWD":/app -w /app --entrypoint forge ghcr.io/foundry-rs/foundry:latest test`
+```bash
+export FOUNDRY_IMAGE="${FOUNDRY_IMAGE:-ghcr.io/foundry-rs/foundry:stable}"
+
+docker run --rm -v "$PWD":/app -w /app --entrypoint forge "$FOUNDRY_IMAGE" fmt
+docker run --rm -v "$PWD":/app -w /app --entrypoint forge "$FOUNDRY_IMAGE" test --via-ir
+```
 
 ## Deployment (Foundry)
 
