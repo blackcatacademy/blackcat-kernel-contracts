@@ -8,6 +8,7 @@ Scope:
 - `src/ReleaseRegistry.sol`
 - `src/ManifestStore.sol`
 - `src/KernelAuthority.sol`
+- `src/AuditCommitmentHub.sol`
 
 Note:
 - The contracts are **not audited**. This is an internal engineering test record, not a formal audit.
@@ -44,6 +45,7 @@ Main suites:
 - `test/ReleaseRegistry.t.sol`
 - `test/ManifestStore.t.sol`
 - `test/KernelAuthority.t.sol`
+- `test/AuditCommitmentHub.t.sol`
 
 Additional suites (focused on missing edges / failure paths):
 - `test/InstanceController.Additional.t.sol`
@@ -163,6 +165,14 @@ Covered areas:
 
 Note:
 - Signer arrays must be strictly increasing. Duplicate signers are therefore rejected by the ordering invariant.
+
+### AuditCommitmentHub (optional batched audit root commits)
+
+Covered areas:
+- reads reporter authority from `InstanceController.reporterAuthority()`,
+- enforces monotonic sequence ranges (`seqFrom == lastSeq + 1`),
+- accepts EIP-1271 reporter signatures (KernelAuthority signer blob),
+- rejects insufficient signature blobs for contract reporters.
 
 ## What this does not guarantee
 

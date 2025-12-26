@@ -21,6 +21,7 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 - [`InstanceController`](src/InstanceController.sol): per-install state machine (propose → stage → activate upgrades), pause/unpause, and history events.
 - [`KernelAuthority`](src/KernelAuthority.sol) (optional): minimal EIP-712 threshold signer authority (multi-device by design without Safe dependency).
 - [`ManifestStore`](src/ManifestStore.sol) (optional): append-only on-chain blob store for manifests (“full detail” mode availability).
+- [`AuditCommitmentHub`](src/AuditCommitmentHub.sol) (optional): commits batched audit Merkle roots (event hub) with EIP-1271 reporter signatures.
 
 ## Docs
 
@@ -36,6 +37,7 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 | [AUDIT_REPORT](docs/AUDIT_REPORT.md) | Internal audit notes + fixes |
 | [TEST_REPORT](docs/TEST_REPORT.md) | What the Foundry test suite validates |
 | [TEST_MATRIX](docs/TEST_MATRIX.md) | External/public API → test mapping |
+| [AUDIT_COMMITMENTS](docs/AUDIT_COMMITMENTS.md) | Optional audit Merkle root commitments |
 | [ROADMAP](docs/ROADMAP.md) | Planned work |
 
 ## Governance model (planned)

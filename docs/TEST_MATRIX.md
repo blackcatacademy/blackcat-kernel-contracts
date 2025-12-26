@@ -195,3 +195,9 @@ Legend:
 - `executeBatch(...)` ✅/❌ `test/KernelAuthority.t.sol:test_executeBatch_runs_multiple_calls`, `test/KernelAuthority.Additional.t.sol:test_executeBatch_rejects_*`, `test/KernelAuthority.Additional.t.sol:test_executeBatch_rejects_target_zero`
 - `isValidSignature(bytes32,bytes)` ✅/❌ `test/KernelAuthority.t.sol:test_isValidSignature_accepts_packed_bytes_array`, `test/KernelAuthority.t.sol:test_isValidSignature_rejects_insufficient_or_unsorted`
 - `setConfig(...)` ✅ `test/KernelAuthority.t.sol:test_setConfig_only_self_via_execute` ❌ invalid config `test/KernelAuthority.Additional.t.sol:test_execute_reverts_when_setConfig_is_invalid`
+
+## AuditCommitmentHub (`src/AuditCommitmentHub.sol`)
+
+- `domainSeparator()`, `hashCommit(...)` ✅ (implicit in signature validation) `test/AuditCommitmentHub.t.sol:test_commitAuthorized_accepts_kernelAuthority_reporter_signature`
+- `commit(...)` ✅/❌ `test/AuditCommitmentHub.t.sol:test_commit_allows_direct_reporter_sender_and_enforces_seq`, `test/AuditCommitmentHub.t.sol:test_commit_rejects_when_reporter_not_set`
+- `commitAuthorized(...)` ✅/❌ `test/AuditCommitmentHub.t.sol:test_commitAuthorized_accepts_kernelAuthority_reporter_signature`, `test/AuditCommitmentHub.t.sol:test_commitAuthorized_rejects_insufficient_kernelAuthority_signatures`

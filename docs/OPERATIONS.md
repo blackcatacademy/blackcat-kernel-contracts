@@ -97,6 +97,9 @@ Relayer variants:
 - `checkInAuthorized(...)`, `reportIncidentAuthorized(...)`, `setPausedAuthorized(...)`
   are intended for CLI/tooling that collects signatures on isolated devices and submits via a relayer.
 
+Optional audit commitments:
+- For batched Merkle root commitments of off-chain audit logs, see: [AUDIT_COMMITMENTS](AUDIT_COMMITMENTS.md)
+
 ## ReleaseRegistry pointer (controller)
 
 If you deploy a new `ReleaseRegistry` (or want to remove enforcement), update the controller pointer:
