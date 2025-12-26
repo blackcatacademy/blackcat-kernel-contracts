@@ -6,9 +6,15 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.sol";
+import {KernelAuthority} from "../src/KernelAuthority.sol";
 import {ReleaseRegistry} from "../src/ReleaseRegistry.sol";
 
 contract ReleaseRegistryAdditionalTest is TestBase {
+    struct Signer {
+        address addr;
+        uint256 pk;
+    }
+
     function test_publishBatch_rejects_length_mismatch() public {
         ReleaseRegistry registry = new ReleaseRegistry(address(this));
 
@@ -43,6 +49,95 @@ contract ReleaseRegistryAdditionalTest is TestBase {
 
         vm.expectRevert("ReleaseRegistry: length mismatch");
         registry.revokeBatch(components, versions);
+    }
+
+    function test_publishAuthorized_accepts_kernelAuthority_owner_signature() public {
+        Signer memory a = Signer({pk: 0xA11CE, addr: vm.addr(0xA11CE)});
+        Signer memory b = Signer({pk: 0xB0B, addr: vm.addr(0xB0B)});
+        (Signer memory s0, Signer memory s1) = _sort2(a, b);
+
+        address[] memory signers = new address[](2);
+        signers[0] = s0.addr;
+        signers[1] = s1.addr;
+        KernelAuthority owner = new KernelAuthority(signers, 2);
+
+        ReleaseRegistry registry = new ReleaseRegistry(address(owner));
+
+        bytes32 component = keccak256("blackcat-core");
+        uint64 version = 1;
+        bytes32 root = keccak256("root-ka-owner");
+        bytes32 uriHash = keccak256("uri-ka-owner");
+        bytes32 metaHash = keccak256("meta-ka-owner");
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = registry.hashPublish(component, version, root, uriHash, metaHash, deadline);
+
+        bytes memory sigBlob = _kaSigBlob(s0, s1, digest);
+        registry.publishAuthorized(component, version, root, uriHash, metaHash, deadline, sigBlob);
+
+        assertTrue(registry.isTrustedRoot(root), "root should be trusted after publish");
+    }
+
+    function test_publishAuthorized_rejects_kernelAuthority_owner_signature_with_insufficient_signatures() public {
+        Signer memory a = Signer({pk: 0xA11CE, addr: vm.addr(0xA11CE)});
+        Signer memory b = Signer({pk: 0xB0B, addr: vm.addr(0xB0B)});
+        (Signer memory s0, Signer memory s1) = _sort2(a, b);
+
+        address[] memory signers = new address[](2);
+        signers[0] = s0.addr;
+        signers[1] = s1.addr;
+        KernelAuthority owner = new KernelAuthority(signers, 2);
+
+        ReleaseRegistry registry = new ReleaseRegistry(address(owner));
+
+        bytes32 component = keccak256("blackcat-core");
+        uint64 version = 1;
+        bytes32 root = keccak256("root-ka-owner-insufficient");
+        bytes32 uriHash = keccak256("uri-ka-owner-insufficient");
+        bytes32 metaHash = keccak256("meta-ka-owner-insufficient");
+
+        uint256 deadline = block.timestamp + 3600;
+        bytes32 digest = registry.hashPublish(component, version, root, uriHash, metaHash, deadline);
+
+        bytes[] memory sigs = new bytes[](1);
+        sigs[0] = _sign(s0.pk, digest);
+        bytes memory sigBlob = abi.encode(sigs);
+
+        vm.expectRevert("ReleaseRegistry: invalid owner signature");
+        registry.publishAuthorized(component, version, root, uriHash, metaHash, deadline, sigBlob);
+    }
+
+    function test_revokeAuthorized_accepts_kernelAuthority_owner_signature() public {
+        Signer memory a = Signer({pk: 0xA11CE, addr: vm.addr(0xA11CE)});
+        Signer memory b = Signer({pk: 0xB0B, addr: vm.addr(0xB0B)});
+        (Signer memory s0, Signer memory s1) = _sort2(a, b);
+
+        address[] memory signers = new address[](2);
+        signers[0] = s0.addr;
+        signers[1] = s1.addr;
+        KernelAuthority owner = new KernelAuthority(signers, 2);
+
+        ReleaseRegistry registry = new ReleaseRegistry(address(owner));
+
+        bytes32 component = keccak256("blackcat-core");
+        uint64 version = 1;
+        bytes32 root = keccak256("root-ka-owner-revoke");
+        bytes32 uriHash = keccak256("uri-ka-owner-revoke");
+        bytes32 metaHash = keccak256("meta-ka-owner-revoke");
+
+        uint256 publishDeadline = block.timestamp + 3600;
+        bytes32 publishDigest = registry.hashPublish(component, version, root, uriHash, metaHash, publishDeadline);
+        bytes memory publishSigBlob = _kaSigBlob(s0, s1, publishDigest);
+        registry.publishAuthorized(component, version, root, uriHash, metaHash, publishDeadline, publishSigBlob);
+        assertTrue(registry.isTrustedRoot(root), "root should be trusted after publish");
+
+        uint256 revokeDeadline = block.timestamp + 3600;
+        bytes32 revokeDigest = registry.hashRevoke(component, version, root, revokeDeadline);
+        bytes memory revokeSigBlob = _kaSigBlob(s0, s1, revokeDigest);
+        registry.revokeAuthorized(component, version, root, revokeDeadline, revokeSigBlob);
+
+        assertTrue(registry.isRevokedRoot(root), "root should be revoked");
+        assertTrue(!registry.isTrustedRoot(root), "root should not be trusted after revoke");
     }
 
     function test_revoke_rejects_release_not_found() public {
@@ -207,5 +302,18 @@ contract ReleaseRegistryAdditionalTest is TestBase {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
         return abi.encodePacked(r, s, v);
     }
-}
 
+    function _sort2(Signer memory a, Signer memory b) private pure returns (Signer memory, Signer memory) {
+        if (a.addr < b.addr) {
+            return (a, b);
+        }
+        return (b, a);
+    }
+
+    function _kaSigBlob(Signer memory s0, Signer memory s1, bytes32 digest) private returns (bytes memory) {
+        bytes[] memory sigs = new bytes[](2);
+        sigs[0] = _sign(s0.pk, digest);
+        sigs[1] = _sign(s1.pk, digest);
+        return abi.encode(sigs);
+    }
+}

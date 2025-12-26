@@ -52,6 +52,9 @@ Additional suites (focused on missing edges / failure paths):
 - `test/ManifestStore.Additional.t.sol`
 - `test/KernelAuthority.Additional.t.sol`
 
+Integration suites (end-to-end flows across contracts):
+- `test/KernelAuthority.Integration.t.sol`
+
 Stateful fuzz (“invariant-ish”) suites:
 - `test/InstanceController.StatefulFuzz.t.sol`
 - `test/ReleaseRegistry.StatefulFuzz.t.sol`
@@ -132,6 +135,7 @@ Covered areas:
 - authorized publish/revoke flows validate:
   - EOA signatures,
   - EIP-2098 compact signatures,
+  - EIP-1271 contract signers (e.g. `KernelAuthority` as owner),
   - deadline expiry,
   - non-replay (nonce consumption).
 - batch APIs validate length matching and reject empty batches,
@@ -153,6 +157,7 @@ Covered areas:
 - EIP-712 digests are computed and validated in execution,
 - replay protection via nonce,
 - `execute` and `executeBatch` enforce threshold signatures and order,
+- `execute` and `executeBatch` reject `target=0`,
 - ETH value transfer via `execute` is tested,
 - EIP-1271 `isValidSignature` supports tooling expectations and rejects insufficient/unsorted signer blobs.
 
