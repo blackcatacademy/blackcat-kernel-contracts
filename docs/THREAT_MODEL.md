@@ -16,6 +16,15 @@ Related:
 
 Assumption: the server filesystem is **not** a trust anchor (FTP mistakes, compromised credentials, partial upgrades).
 
+Rendered diagram (SVG):
+
+![Trust boundaries](diagrams/trust-boundaries.svg)
+
+Diagram source: `docs/diagrams/trust-boundaries.excalidraw`
+
+<details>
+<summary>Mermaid source (diff-friendly)</summary>
+
 ```mermaid
 flowchart TB
   subgraph Untrusted["Untrusted / easily compromised"]
@@ -42,6 +51,7 @@ flowchart TB
   Net --> Runtime
   Relayer --> Chain
 ```
+</details>
 
 Core principle:
 - **On-chain state** is the source of truth for install/upgrade integrity and emergency controls.

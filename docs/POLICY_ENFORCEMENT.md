@@ -33,6 +33,15 @@ The “back controller” is a classic **Policy Enforcement Point (PEP)**:
 - All security-critical actions must go through a single enforcement layer (a narrow API).
 - That layer checks the current on-chain commitments and the active policy before allowing the action.
 
+Rendered diagram (SVG):
+
+![Policy enforcement](diagrams/policy-enforcement.svg)
+
+Diagram source: `docs/diagrams/policy-enforcement.excalidraw`
+
+<details>
+<summary>Mermaid source (diff-friendly)</summary>
+
 ```mermaid
 flowchart TB
   subgraph Server["Server runtime"]
@@ -55,6 +64,7 @@ flowchart TB
   PEP -->|approved decrypt or write| Secrets
   Secrets -->|approved write| DB
 ```
+</details>
 
 ### Non-negotiable design rule
 
