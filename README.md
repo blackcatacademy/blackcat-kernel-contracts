@@ -33,6 +33,7 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 | [POLICY_ENFORCEMENT](docs/POLICY_ENFORCEMENT.md) | Runtime PEP (“Back Controller”) design |
 | [AUTHORITY_MODES](docs/AUTHORITY_MODES.md) | Safe vs `KernelAuthority` vs EOA |
 | [OPERATIONS](docs/OPERATIONS.md) | Operational flows (bots, incidents, upgrades) |
+| [DEPLOY_EDGEN](docs/DEPLOY_EDGEN.md) | Edgen Chain dry-run + broadcast deployment |
 | [AUDIT_CHECKLIST](docs/AUDIT_CHECKLIST.md) | Practical pre-production checklist |
 | [AUDIT_REPORT](docs/AUDIT_REPORT.md) | Internal audit notes + fixes |
 | [TEST_REPORT](docs/TEST_REPORT.md) | What the Foundry test suite validates |
