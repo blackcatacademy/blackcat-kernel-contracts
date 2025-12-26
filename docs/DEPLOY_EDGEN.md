@@ -65,5 +65,7 @@ If the network doesn’t support EIP-1559 fees, retry with `--legacy`.
 
 ## Next steps
 
+- Verify contracts on the explorer so method names decode (instead of `0x12345678` selectors):
+  - See: [VERIFY_EDGENSCAN](VERIFY_EDGENSCAN.md)
 - Record deployed addresses in your runtime config (`blackcat-config`) and enforce strict production posture (fail-closed on trust uncertainty).
 - Proceed with per-install instance creation via `InstanceFactory` scripts (deterministic CREATE2 recommended).
