@@ -1,4 +1,4 @@
-# Security Flows & Diagrams (Draft)
+# Security Flows & Diagrams (v1)
 
 This document provides **diagram-first** explanations of the Trust Kernel security flows:
 what is expected to happen, what must *not* happen, and what the contracts enforce on-chain.

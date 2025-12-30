@@ -1,4 +1,4 @@
-# Operations Guide (Draft)
+# Operations Guide (v1)
 
 This file documents **operator flows** for deploying and operating the Trust Kernel contracts.
 
