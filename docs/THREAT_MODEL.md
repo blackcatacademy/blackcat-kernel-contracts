@@ -1,4 +1,4 @@
-# Threat Model (Draft)
+# Threat Model (v1)
 
 This document describes the **threat model** for the BlackCat Trust Kernel.
 

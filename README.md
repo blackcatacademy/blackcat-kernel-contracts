@@ -33,6 +33,9 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 | [POLICY_ENFORCEMENT](docs/POLICY_ENFORCEMENT.md) | Runtime PEP (“Back Controller”) design |
 | [AUTHORITY_MODES](docs/AUTHORITY_MODES.md) | Safe vs `KernelAuthority` vs EOA |
 | [OPERATIONS](docs/OPERATIONS.md) | Operational flows (bots, incidents, upgrades) |
+| [BUILD_AND_VERIFICATION](docs/BUILD_AND_VERIFICATION.md) | Build settings, EIP-170 size notes, metadata/verification portability |
+| [DRY_RUN_EDGEN](docs/DRY_RUN_EDGEN.md) | Step-by-step Edgen dry-run (no broadcast) |
+| [DRY_RUN_EDGEN_KERNELAUTHORITY](docs/DRY_RUN_EDGEN_KERNELAUTHORITY.md) | Same, but using `KernelAuthority` |
 | [DEPLOY_EDGEN](docs/DEPLOY_EDGEN.md) | Edgen Chain dry-run + broadcast deployment |
 | [VERIFY_EDGENSCAN](docs/VERIFY_EDGENSCAN.md) | Explorer verification (decode method names) |
 | [AUDIT_CHECKLIST](docs/AUDIT_CHECKLIST.md) | Practical pre-production checklist |
@@ -42,7 +45,11 @@ This repository is intentionally **Solidity-only**. Runtime policy, config permi
 | [AUDIT_COMMITMENTS](docs/AUDIT_COMMITMENTS.md) | Optional audit Merkle root commitments |
 | [ROADMAP](docs/ROADMAP.md) | Planned work |
 
-## Governance model (planned)
+Example deployment reports:
+- [EDGEN_SMOKE_REPORT_2025-12-26](docs/EDGEN_SMOKE_REPORT_2025-12-26.md)
+- [EDGEN_VERIFICATION_REPORT_2025-12-26](docs/EDGEN_VERIFICATION_REPORT_2025-12-26.md)
+
+## Governance model
 
 Do not embed complex multisig logic inside these contracts. Prefer external multisig wallets (e.g. Safe) and treat them as authorities:
 - `root_authority` (policy changes, signer rotation, thresholds)
@@ -51,7 +58,7 @@ Do not embed complex multisig logic inside these contracts. Prefer external mult
 
 In practice each authority can be a separate Safe with its own threshold.
 
-## Trust modes (planned)
+## Trust modes
 
 - `root+uri` (recommended baseline): store a Merkle/tree root plus a content URI (IPFS/HTTPS) for full manifests.
 - `full detail` (paranoid): store more on-chain detail (chunked manifest bytes or per-file hashes). Expensive; only for high-value systems.
@@ -73,6 +80,8 @@ docker run --rm -v "$PWD":/app -w /app --entrypoint forge "$FOUNDRY_IMAGE" test 
 
 Scripts live in [`script/`](script/) and intentionally avoid external dependencies.
 
+For a complete operator-oriented guide (including authority rotation, guard/bot helpers, and production finalization), see: [OPERATIONS](docs/OPERATIONS.md).
+
 - Deploy: [DeployAll.s.sol](script/DeployAll.s.sol), [DeployReleaseRegistry.s.sol](script/DeployReleaseRegistry.s.sol), [DeployInstanceFactory.s.sol](script/DeployInstanceFactory.s.sol), [DeployManifestStore.s.sol](script/DeployManifestStore.s.sol)
 - Release publishing: [PublishRelease.s.sol](script/PublishRelease.s.sol), [PublishReleaseAuthorized.s.sol](script/PublishReleaseAuthorized.s.sol), [PublishReleaseBatchAuthorized.s.sol](script/PublishReleaseBatchAuthorized.s.sol)
 - Release revocation: [RevokeRelease.s.sol](script/RevokeRelease.s.sol), [RevokeReleaseAuthorized.s.sol](script/RevokeReleaseAuthorized.s.sol), [RevokeReleaseBatchAuthorized.s.sol](script/RevokeReleaseBatchAuthorized.s.sol), [RevokeByRootAuthorized.s.sol](script/RevokeByRootAuthorized.s.sol)
@@ -80,5 +89,6 @@ Scripts live in [`script/`](script/) and intentionally avoid external dependenci
 - Monitoring + incidents: [CheckIn.s.sol](script/CheckIn.s.sol), [ReportIncident.s.sol](script/ReportIncident.s.sol), [PauseIfStale.s.sol](script/PauseIfStale.s.sol), [PauseIfActiveRootUntrusted.s.sol](script/PauseIfActiveRootUntrusted.s.sol)
 - Attestations: [SetAttestation.s.sol](script/SetAttestation.s.sol), [ClearAttestation.s.sol](script/ClearAttestation.s.sol), [SetAttestationAndLock.s.sol](script/SetAttestationAndLock.s.sol), [LockAttestationKey.s.sol](script/LockAttestationKey.s.sol)
 - Manifest blobs: [UploadManifestBlob.s.sol](script/UploadManifestBlob.s.sol)
+- Audit commitments (optional): [DeployAuditCommitmentHub.s.sol](script/DeployAuditCommitmentHub.s.sol), [PostAuditCommit.s.sol](script/PostAuditCommit.s.sol)
 
 **Note:** contracts are not audited. Do not use in production until reviewed.

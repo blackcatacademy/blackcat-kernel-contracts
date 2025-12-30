@@ -1,4 +1,4 @@
-# Audit Checklist (Draft)
+# Audit Checklist (v1)
 
 This is a practical checklist for reviewing the Trust Kernel contracts **before production**.
 

@@ -1,4 +1,4 @@
-# Policy Enforcement (“Back Controller”) — Design Notes (Draft)
+# Policy Enforcement (“Back Controller”) — Design Notes (v1)
 
 This document explains how BlackCat enforces *runtime rules* (“what is allowed to happen”) using:
 - on-chain **commitments** (`activeRoot`, `activeUriHash`, `activePolicyHash`) stored in `InstanceController`, and

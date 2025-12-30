@@ -1,4 +1,4 @@
-# Trust Kernel (Web3 / EVM) — v1 Spec (Draft)
+# Trust Kernel (Web3 / EVM) — v1 Spec
 
 This is the working specification for the BlackCat **Trust Kernel**.
 

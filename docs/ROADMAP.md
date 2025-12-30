@@ -2,7 +2,14 @@
 
 This roadmap tracks the contract layer of the BlackCat “trust kernel” (Web3 / EVM).
 
-## Stage 0 — Specification (current)
+## Current status (v1)
+
+- ✅ Contracts + Foundry scripts implemented.
+- ✅ CI gates: `forge fmt --check`, `forge test --via-ir`, EIP-170 size check, Slither (High/Medium=0).
+- ✅ Edgen deployment + explorer verification (see reports in `docs/EDGEN_*_REPORT_*.md`).
+- 🔜 External audit / formal review + ongoing hardening.
+
+## Stage 0 — Specification (v1 complete; evolves over time)
 - Threat model and invariants (what must never be possible).
   - See: [THREAT_MODEL](THREAT_MODEL.md)
   - Diagrams: [SECURITY_FLOWS](SECURITY_FLOWS.md)
@@ -20,7 +27,7 @@ This roadmap tracks the contract layer of the BlackCat “trust kernel” (Web3 
   - authorities as external multisig wallets (Safe) rather than custom on-chain multisig logic,
   - separation of `root_authority` vs `upgrade_authority` vs `emergency_authority`.
 
-## Stage 1 — Foundry scaffold + skeleton contracts (in progress)
+## Stage 1 — Foundry scaffold + v1 contracts (complete)
 - ✅ Foundry project scaffold (`foundry.toml`, fmt/test workflows).
 - ✅ Implement skeletons with explicit events and minimal storage:
   - `ReleaseRegistry` mapping `componentId+version → root, uri, meta`,
@@ -34,18 +41,18 @@ This roadmap tracks the contract layer of the BlackCat “trust kernel” (Web3 
 - ✅ Add 2-step authority rotation and incident reporting to `InstanceController`.
 - ✅ Add deterministic instance creation via CREATE2 (`predictInstanceAddress`, `createInstanceDeterministic`).
 - ✅ Unit tests for storage + access control + upgrade TTL/timelock behavior.
-- ▢ Expand event assertions + fuzz tests (invariants).
+- ✅ Expand event assertions + fuzz tests (stateful/invariant-ish).
 
-## Stage 2 — Setup ceremony (multi-device bootstrap)
+## Stage 2 — Setup ceremony (multi-device bootstrap) (complete)
 - ✅ Replay protection via CREATE2 + salt (signatures cannot be replayed into multiple instances).
 - ✅ EIP-712 typed “setup request” signatures (offline review + multi-device confirmation).
-- Finalization flow:
-  - binds the controller to chosen authorities,
-  - pins the initial trust mode and policy hash,
-  - emits an immutable “genesis” event for the installation.
+- ✅ Finalization flow:
+  - ✅ binds the controller to chosen authorities,
+  - ✅ pins the initial trust state (root/uriHash/policyHash),
+  - ✅ emits an immutable genesis marker (`UpgradeActivated(previousRoot=0x0, ...)`).
 - ✅ Optional authority mode `KernelAuthority` (EIP-712 threshold signer) for multi-device flows without Safe.
 
-## Stage 3 — Upgrade state machine + emergency controls
+## Stage 3 — Upgrade state machine + emergency controls (complete)
 - ✅ Upgrade flow: `propose → activate` with TTL and optional timelock.
 - ✅ Emergency controls: `pause/unpause` (plus runtime-enforced “unsafe” decisions off-chain).
 - ✅ Backward-compatible upgrades: optional compatibility overlap (rolling migrations).
@@ -56,14 +63,15 @@ This roadmap tracks the contract layer of the BlackCat “trust kernel” (Web3 
 - ✅ Document canonical EIP-712 type strings for off-chain tooling (no on-chain `hash*` helpers to stay under EIP-170).
 - ✅ Optional `AuditCommitmentHub` for batched audit Merkle roots (event hub, EIP-1271 reporter signatures).
 
-## Stage 4 — Deployment + integration artifacts
+## Stage 4 — Deployment + integration artifacts (v1 complete; packaging evolves)
 - ✅ Deterministic addresses for instances (CREATE2).
 - ✅ Deploy scripts for factories/registries + release ops (Foundry scripts).
-- Publish ABI + versioned artifacts to be consumed by:
+- ✅ Publish ABI + artifacts to be consumed by:
   - `blackcat-core` runtime enforcement,
   - `blackcat-cli` / `blackcat-installer` operator flows.
+  - (In this repo today: `out/` + `blackcat-cli.json`.)
 
-## Stage 5 — Audit & hardening
+## Stage 5 — Audit & hardening (current)
 - External security audit + formal invariant review.
 - Gas/cost benchmarks for trust modes.
 - Upgrade safety: explicit “break glass” controls and post-incident recovery runbooks.
