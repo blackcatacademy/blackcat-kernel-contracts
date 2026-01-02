@@ -39,12 +39,8 @@ on:
           - auto
           - a
           - b
-  schedule:
-    # Daily at 02:17 UTC (staggered to avoid competing with other repos at :00)
-    - cron: "17 2 * * *"
   push:
     branches:
-      - main
       - dev
       - integration/dev
     paths:
@@ -64,7 +60,7 @@ concurrency:
 
 jobs:
   disabled:
-    if: ${{ github.event_name != 'workflow_dispatch' && vars.AI_AUDIT_ENABLED != '1' }}
+    if: ${{ (github.ref_name == 'dev' || github.ref_name == 'integration/dev') && github.event_name != 'workflow_dispatch' && vars.AI_AUDIT_ENABLED != '1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -84,7 +80,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   audit:
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.AI_AUDIT_ENABLED == '1' }}
+    if: ${{ (github.ref_name == 'dev' || github.ref_name == 'integration/dev') && (github.event_name == 'workflow_dispatch' || vars.AI_AUDIT_ENABLED == '1') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
