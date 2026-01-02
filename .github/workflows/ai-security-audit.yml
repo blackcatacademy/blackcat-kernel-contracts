@@ -226,45 +226,45 @@ jobs:
 
             MODEL="$(
               python3 - "$REQUESTED_MODEL" "$REQUIRE_REQUESTED" "$MODELS_FILE" <<'PY'
-import json
-import sys
-
-requested = sys.argv[1]
-require_requested = (sys.argv[2].lower() == "true")
-
-try:
-    with open(sys.argv[3], "r", encoding="utf-8") as f:
-        data = json.load(f)
-except Exception:
-    print("")
-    sys.exit(0)
-
-ids = []
-for item in data.get("data", []):
-    if isinstance(item, dict):
-        mid = item.get("id")
-        if isinstance(mid, str):
-            ids.append(mid)
-
-if require_requested and requested not in ids:
-    print("")
-    sys.exit(0)
-
-if requested in ids:
-    print(requested)
-    sys.exit(0)
-
-for mid in ids:
-    if mid.startswith("gpt-"):
-        print(mid)
-        sys.exit(0)
-
-if ids:
-    print(ids[0])
-    sys.exit(0)
-
-print("")
-PY
+          import json
+          import sys
+          
+          requested = sys.argv[1]
+          require_requested = (sys.argv[2].lower() == "true")
+          
+          try:
+              with open(sys.argv[3], "r", encoding="utf-8") as f:
+                  data = json.load(f)
+          except Exception:
+              print("")
+              sys.exit(0)
+          
+          ids = []
+          for item in data.get("data", []):
+              if isinstance(item, dict):
+                  mid = item.get("id")
+                  if isinstance(mid, str):
+                      ids.append(mid)
+          
+          if require_requested and requested not in ids:
+              print("")
+              sys.exit(0)
+          
+          if requested in ids:
+              print(requested)
+              sys.exit(0)
+          
+          for mid in ids:
+              if mid.startswith("gpt-"):
+                  print(mid)
+                  sys.exit(0)
+          
+          if ids:
+              print(ids[0])
+              sys.exit(0)
+          
+          print("")
+          PY
             )"
             rm -f "$MODELS_FILE"
 
