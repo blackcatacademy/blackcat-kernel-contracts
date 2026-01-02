@@ -39,21 +39,7 @@ on:
           - auto
           - a
           - b
-  schedule:
-    # Daily at 02:17 UTC (staggered to avoid competing with other repos at :00)
-    - cron: "17 2 * * *"
-  push:
-    branches:
-      - main
-      - dev
-      - integration/dev
-    paths:
-      - "src/**"
-      - "test/**"
-      - "script/**"
-      - "foundry.toml"
-      - ".github/prompts/**"
-      - ".github/workflows/ai-security-audit.yml"
+  # Temporarily disabled automatic runs (push/schedule). Re-enable once API credits are available.
 
 permissions:
   contents: read
