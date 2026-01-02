@@ -42,6 +42,8 @@ jobs:
       - name: Select audit mode
         id: mode
         shell: bash
+        env:
+          AI_AUDIT_EFFORT: ${{ vars.AI_AUDIT_EFFORT }}
         run: |
           set -euo pipefail
 
@@ -64,7 +66,15 @@ jobs:
           VAR_INDEX=$(((GITHUB_RUN_NUMBER / ${#MODES[@]}) % ${#VARIANTS[@]}))
           VARIANT="${VARIANTS[$VAR_INDEX]}"
 
-          EFFORT="high"
+          EFFORT="${AI_AUDIT_EFFORT:-high}"
+          EFFORT="$(printf '%s' "$EFFORT" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          if [ -z "$EFFORT" ] || [ "$EFFORT" = "auto" ]; then
+            EFFORT="high"
+          fi
+          if [ "$EFFORT" != "low" ] && [ "$EFFORT" != "medium" ] && [ "$EFFORT" != "high" ]; then
+            echo "Invalid AI_AUDIT_EFFORT: $EFFORT (expected low|medium|high)" >&2
+            exit 1
+          fi
 
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
