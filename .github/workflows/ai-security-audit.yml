@@ -30,6 +30,15 @@ on:
           - low
           - medium
           - high
+      variant:
+        description: "Prompt variant (auto = rotate)"
+        required: false
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - a
+          - b
   schedule:
     # Daily at 02:17 UTC (staggered to avoid competing with other repos at :00)
     - cron: "17 2 * * *"
@@ -66,6 +75,7 @@ jobs:
         env:
           MODE_OVERRIDE: ${{ github.event.inputs.mode }}
           EFFORT_OVERRIDE: ${{ github.event.inputs.effort }}
+          VARIANT_OVERRIDE: ${{ github.event.inputs.variant }}
         run: |
           set -euo pipefail
 
@@ -78,6 +88,8 @@ jobs:
             "invariants"
             "economics-mev"
           )
+
+          VARIANTS=("a" "b")
 
           MODE="${MODE_OVERRIDE:-}"
           if [ -z "$MODE" ] || [ "$MODE" = "auto" ]; then
@@ -97,6 +109,25 @@ jobs:
             fi
           fi
 
+          VARIANT="${VARIANT_OVERRIDE:-}"
+          if [ -z "$VARIANT" ] || [ "$VARIANT" = "auto" ]; then
+            # Rotate variants more slowly than modes: every full mode-cycle switches the variant.
+            VAR_INDEX=$(((GITHUB_RUN_NUMBER / ${#MODES[@]}) % ${#VARIANTS[@]}))
+            VARIANT="${VARIANTS[$VAR_INDEX]}"
+          else
+            OK="false"
+            for V in "${VARIANTS[@]}"; do
+              if [ "$V" = "$VARIANT" ]; then
+                OK="true"
+                break
+              fi
+            done
+            if [ "$OK" != "true" ]; then
+              echo "Invalid variant: $VARIANT" >&2
+              exit 1
+            fi
+          fi
+
           EFFORT="${EFFORT_OVERRIDE:-}"
           if [ -z "$EFFORT" ]; then
             EFFORT="high"
@@ -107,9 +138,20 @@ jobs:
           fi
 
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
           echo "effort=$EFFORT" >> "$GITHUB_OUTPUT"
-          echo "prompt_file=.github/prompts/solidity/${MODE}.md" >> "$GITHUB_OUTPUT"
-          echo "report_file=reports/ai-security-audit-solidity-${MODE}.md" >> "$GITHUB_OUTPUT"
+
+          PROMPT_FILE=".github/prompts/solidity/${MODE}.md"
+          if [ "$VARIANT" = "b" ]; then
+            PROMPT_FILE=".github/prompts/solidity/${MODE}.b.md"
+          fi
+          if [ ! -f "$PROMPT_FILE" ]; then
+            echo "Missing prompt file: $PROMPT_FILE" >&2
+            exit 1
+          fi
+
+          echo "prompt_file=$PROMPT_FILE" >> "$GITHUB_OUTPUT"
+          echo "report_file=reports/ai-security-audit-solidity-${MODE}-${VARIANT}.md" >> "$GITHUB_OUTPUT"
 
       - name: Select OpenAI API key (fallback pool)
         id: key
@@ -180,6 +222,7 @@ jobs:
             echo "## AI Solidity Security Audit"
             echo ""
             echo "- Mode: \`${{ steps.mode.outputs.mode }}\`"
+            echo "- Variant: \`${{ steps.mode.outputs.variant }}\`"
             echo "- Prompt: \`${{ steps.mode.outputs.prompt_file }}\`"
             echo "- Report: \`${{ steps.mode.outputs.report_file }}\`"
             if [ -n "${{ github.event.inputs.model }}" ]; then
@@ -192,6 +235,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ai-security-audit-solidity-${{ steps.mode.outputs.mode }}
+          name: ai-security-audit-solidity-${{ steps.mode.outputs.mode }}-${{ steps.mode.outputs.variant }}
           path: ${{ steps.mode.outputs.report_file }}
           if-no-files-found: error
