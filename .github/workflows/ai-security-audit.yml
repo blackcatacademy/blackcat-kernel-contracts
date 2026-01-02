@@ -2,6 +2,34 @@ name: AI Security Audit (Solidity)
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Audit mode (auto = rotate)"
+        required: false
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - access-control
+          - upgradeability
+          - reentrancy
+          - signatures-crypto
+          - dos-griefing
+          - invariants
+          - economics-mev
+      model:
+        description: "Codex model override (optional)"
+        required: false
+        default: ""
+      effort:
+        description: "Reasoning effort"
+        required: false
+        default: "high"
+        type: choice
+        options:
+          - low
+          - medium
+          - high
   schedule:
     # Daily at 02:17 UTC (staggered to avoid competing with other repos at :00)
     - cron: "17 2 * * *"
@@ -9,6 +37,13 @@ on:
     branches:
       - main
       - integration/dev
+    paths:
+      - "src/**"
+      - "test/**"
+      - "script/**"
+      - "foundry.toml"
+      - ".github/prompts/**"
+      - ".github/workflows/ai-security-audit.yml"
 
 permissions:
   contents: read
@@ -28,6 +63,9 @@ jobs:
       - name: Select audit mode
         id: mode
         shell: bash
+        env:
+          MODE_OVERRIDE: ${{ github.event.inputs.mode }}
+          EFFORT_OVERRIDE: ${{ github.event.inputs.effort }}
         run: |
           set -euo pipefail
 
@@ -41,10 +79,35 @@ jobs:
             "economics-mev"
           )
 
-          INDEX=$((GITHUB_RUN_NUMBER % ${#MODES[@]}))
-          MODE="${MODES[$INDEX]}"
+          MODE="${MODE_OVERRIDE:-}"
+          if [ -z "$MODE" ] || [ "$MODE" = "auto" ]; then
+            INDEX=$((GITHUB_RUN_NUMBER % ${#MODES[@]}))
+            MODE="${MODES[$INDEX]}"
+          else
+            OK="false"
+            for M in "${MODES[@]}"; do
+              if [ "$M" = "$MODE" ]; then
+                OK="true"
+                break
+              fi
+            done
+            if [ "$OK" != "true" ]; then
+              echo "Invalid mode: $MODE" >&2
+              exit 1
+            fi
+          fi
+
+          EFFORT="${EFFORT_OVERRIDE:-}"
+          if [ -z "$EFFORT" ]; then
+            EFFORT="high"
+          fi
+          if [ "$EFFORT" != "low" ] && [ "$EFFORT" != "medium" ] && [ "$EFFORT" != "high" ]; then
+            echo "Invalid effort: $EFFORT" >&2
+            exit 1
+          fi
 
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "effort=$EFFORT" >> "$GITHUB_OUTPUT"
           echo "prompt_file=.github/prompts/solidity/${MODE}.md" >> "$GITHUB_OUTPUT"
           echo "report_file=reports/ai-security-audit-solidity-${MODE}.md" >> "$GITHUB_OUTPUT"
 
@@ -98,14 +161,16 @@ jobs:
 
       - name: Run AI audit (full repo context)
         id: codex
-        uses: openai/codex-action@v1
+        uses: openai/codex-action@086169432f1d2ab2f4057540b1754d550f6a1189 # v1.4
         with:
           openai-api-key: ${{ env.OPENAI_API_KEY }}
           prompt-file: ${{ steps.mode.outputs.prompt_file }}
           output-file: ${{ steps.mode.outputs.report_file }}
           sandbox: read-only
-          effort: high
+          model: ${{ github.event.inputs.model }}
+          effort: ${{ steps.mode.outputs.effort }}
           allow-bots: true
+          safety-strategy: drop-sudo
 
       - name: Job summary
         if: always()
@@ -117,6 +182,10 @@ jobs:
             echo "- Mode: \`${{ steps.mode.outputs.mode }}\`"
             echo "- Prompt: \`${{ steps.mode.outputs.prompt_file }}\`"
             echo "- Report: \`${{ steps.mode.outputs.report_file }}\`"
+            if [ -n "${{ github.event.inputs.model }}" ]; then
+              echo "- Model override: \`${{ github.event.inputs.model }}\`"
+            fi
+            echo "- Effort: \`${{ steps.mode.outputs.effort }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload report artifact
