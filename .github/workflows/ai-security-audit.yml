@@ -105,6 +105,7 @@ jobs:
           output-file: ${{ steps.mode.outputs.report_file }}
           sandbox: read-only
           effort: high
+          allow-bots: true
 
       - name: Job summary
         if: always()
