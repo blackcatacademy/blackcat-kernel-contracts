@@ -1469,13 +1469,7 @@ contract BlackCatInstanceControllerV1 {
         if (signer.code.length == 0) {
             return _recoverOrZero(digest, signature) == signer;
         }
-
-        (bool ok, bytes memory ret) = signer.staticcall(abi.encodeWithSelector(EIP1271_MAGICVALUE, digest, signature));
-        // Casting to `bytes4` is safe because we check `ret.length >= 4` first.
-        // slither-disable-start incorrect-equality
-        // forge-lint: disable-next-line(unsafe-typecast)
-        return ok && ret.length >= 4 && bytes4(ret) == EIP1271_MAGICVALUE;
-        // slither-disable-end incorrect-equality
+        return _isValidSignatureNow(signer, digest, signature);
     }
 
     function _recover(bytes32 digest, bytes memory signature) private pure returns (address) {
