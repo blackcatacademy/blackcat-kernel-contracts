@@ -4,6 +4,7 @@
 
 [![CI](https://github.com/blackcatacademy/blackcat-kernel-contracts/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/blackcatacademy/blackcat-kernel-contracts/actions/workflows/ci.yml?query=branch%3Amain)
 [![Slither](https://github.com/blackcatacademy/blackcat-kernel-contracts/actions/workflows/slither.yml/badge.svg?branch=main)](https://github.com/blackcatacademy/blackcat-kernel-contracts/actions/workflows/slither.yml?query=branch%3Amain)
+[![AI Audit](https://github.com/blackcatacademy/blackcat-kernel-contracts/actions/workflows/ai-security-audit.yml/badge.svg?branch=dev)](https://github.com/blackcatacademy/blackcat-kernel-contracts/actions/workflows/ai-security-audit.yml?query=branch%3Adev)
 
 EVM smart contracts that act as the **trust authority** for BlackCat installations.
 
