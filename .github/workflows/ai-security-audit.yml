@@ -1,0 +1,127 @@
+name: AI Security Audit (Solidity)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily at 02:17 UTC (staggered to avoid competing with other repos at :00)
+    - cron: "17 2 * * *"
+  push:
+    branches:
+      - main
+      - integration/dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-security-audit-solidity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Select audit mode
+        id: mode
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MODES=(
+            "access-control"
+            "upgradeability"
+            "reentrancy"
+            "signatures-crypto"
+            "dos-griefing"
+            "invariants"
+            "economics-mev"
+          )
+
+          INDEX=$((GITHUB_RUN_NUMBER % ${#MODES[@]}))
+          MODE="${MODES[$INDEX]}"
+
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "prompt_file=.github/prompts/solidity/${MODE}.md" >> "$GITHUB_OUTPUT"
+          echo "report_file=reports/ai-security-audit-solidity-${MODE}.md" >> "$GITHUB_OUTPUT"
+
+      - name: Select OpenAI API key (fallback pool)
+        id: key
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY_1: ${{ secrets.OPENAI_API_KEY_1 }}
+          OPENAI_API_KEY_2: ${{ secrets.OPENAI_API_KEY_2 }}
+          OPENAI_API_KEY_3: ${{ secrets.OPENAI_API_KEY_3 }}
+          OPENAI_API_KEY_4: ${{ secrets.OPENAI_API_KEY_4 }}
+          OPENAI_API_KEY_5: ${{ secrets.OPENAI_API_KEY_5 }}
+        run: |
+          set -euo pipefail
+
+          # Prefer OPENAI_API_KEY, then numbered keys.
+          KEYS=(
+            "${OPENAI_API_KEY:-}"
+            "${OPENAI_API_KEY_1:-}"
+            "${OPENAI_API_KEY_2:-}"
+            "${OPENAI_API_KEY_3:-}"
+            "${OPENAI_API_KEY_4:-}"
+            "${OPENAI_API_KEY_5:-}"
+          )
+
+          for KEY in "${KEYS[@]}"; do
+            if [ -z "$KEY" ]; then
+              continue
+            fi
+
+            # Cheap health check: if the key is invalid/quota-exhausted, this typically fails with 401/429.
+            CODE="$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer $KEY" \
+              https://api.openai.com/v1/models || true)"
+
+            if [ "$CODE" = "200" ]; then
+              echo "OPENAI_API_KEY=$KEY" >> "$GITHUB_ENV"
+              echo "ok=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          echo "No usable OpenAI API key found. Configure secrets OPENAI_API_KEY or OPENAI_API_KEY_{1..5}." >&2
+          exit 1
+
+      - name: Prepare report folder
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+
+      - name: Run AI audit (full repo context)
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ env.OPENAI_API_KEY }}
+          prompt-file: ${{ steps.mode.outputs.prompt_file }}
+          output-file: ${{ steps.mode.outputs.report_file }}
+          sandbox: read-only
+          effort: high
+
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## AI Solidity Security Audit"
+            echo ""
+            echo "- Mode: \`${{ steps.mode.outputs.mode }}\`"
+            echo "- Prompt: \`${{ steps.mode.outputs.prompt_file }}\`"
+            echo "- Report: \`${{ steps.mode.outputs.report_file }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-security-audit-solidity-${{ steps.mode.outputs.mode }}
+          path: ${{ steps.mode.outputs.report_file }}
+          if-no-files-found: error
