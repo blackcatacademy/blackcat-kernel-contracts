@@ -1,44 +1,9 @@
 name: AI Security Audit (Solidity)
 
 on:
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: "Audit mode (auto = rotate)"
-        required: false
-        default: "auto"
-        type: choice
-        options:
-          - auto
-          - access-control
-          - upgradeability
-          - reentrancy
-          - signatures-crypto
-          - dos-griefing
-          - invariants
-          - economics-mev
-      model:
-        description: "Codex model override (optional)"
-        required: false
-        default: ""
-      effort:
-        description: "Reasoning effort"
-        required: false
-        default: "high"
-        type: choice
-        options:
-          - low
-          - medium
-          - high
-      variant:
-        description: "Prompt variant (auto = rotate)"
-        required: false
-        default: "auto"
-        type: choice
-        options:
-          - auto
-          - a
-          - b
+  schedule:
+    # Daily at 02:17 UTC (staggered to avoid competing with other repos at :00)
+    - cron: "17 2 * * *"
   push:
     branches:
       - dev
@@ -59,41 +24,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  disabled:
-    if: ${{ (github.ref_name == 'dev' || github.ref_name == 'integration/dev') && github.event_name != 'workflow_dispatch' && vars.AI_AUDIT_ENABLED != '1' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: AI audit disabled
-        shell: bash
-        run: |
-          {
-            echo "## AI Security Audit (Solidity)"
-            echo ""
-            echo "Automatic AI audits are currently disabled."
-            echo ""
-            echo "To enable scheduled/push audits, set the repository variable:"
-            echo ""
-            echo "- \`AI_AUDIT_ENABLED=1\`"
-            echo ""
-            echo "Manual runs via \`workflow_dispatch\` always work (still requires API credits)."
-          } >> "$GITHUB_STEP_SUMMARY"
-
   audit:
-    if: ${{ (github.ref_name == 'dev' || github.ref_name == 'integration/dev') && (github.event_name == 'workflow_dispatch' || vars.AI_AUDIT_ENABLED == '1') }}
+    if: ${{ vars.AI_AUDIT_ENABLED == '1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Checkout (schedule -> dev)
+        if: ${{ github.event_name == 'schedule' }}
+        uses: actions/checkout@v6
+        with:
+          ref: dev
+
+      - name: Checkout (push)
+        if: ${{ github.event_name != 'schedule' }}
         uses: actions/checkout@v6
 
       - name: Select audit mode
         id: mode
         shell: bash
-        env:
-          MODE_OVERRIDE: ${{ github.event.inputs.mode }}
-          EFFORT_OVERRIDE: ${{ github.event.inputs.effort }}
-          VARIANT_OVERRIDE: ${{ github.event.inputs.variant }}
         run: |
           set -euo pipefail
 
@@ -109,51 +57,14 @@ jobs:
 
           VARIANTS=("a" "b")
 
-          MODE="${MODE_OVERRIDE:-}"
-          if [ -z "$MODE" ] || [ "$MODE" = "auto" ]; then
-            INDEX=$((GITHUB_RUN_NUMBER % ${#MODES[@]}))
-            MODE="${MODES[$INDEX]}"
-          else
-            OK="false"
-            for M in "${MODES[@]}"; do
-              if [ "$M" = "$MODE" ]; then
-                OK="true"
-                break
-              fi
-            done
-            if [ "$OK" != "true" ]; then
-              echo "Invalid mode: $MODE" >&2
-              exit 1
-            fi
-          fi
+          INDEX=$((GITHUB_RUN_NUMBER % ${#MODES[@]}))
+          MODE="${MODES[$INDEX]}"
 
-          VARIANT="${VARIANT_OVERRIDE:-}"
-          if [ -z "$VARIANT" ] || [ "$VARIANT" = "auto" ]; then
-            # Rotate variants more slowly than modes: every full mode-cycle switches the variant.
-            VAR_INDEX=$(((GITHUB_RUN_NUMBER / ${#MODES[@]}) % ${#VARIANTS[@]}))
-            VARIANT="${VARIANTS[$VAR_INDEX]}"
-          else
-            OK="false"
-            for V in "${VARIANTS[@]}"; do
-              if [ "$V" = "$VARIANT" ]; then
-                OK="true"
-                break
-              fi
-            done
-            if [ "$OK" != "true" ]; then
-              echo "Invalid variant: $VARIANT" >&2
-              exit 1
-            fi
-          fi
+          # Rotate variants more slowly than modes: every full mode-cycle switches the variant.
+          VAR_INDEX=$(((GITHUB_RUN_NUMBER / ${#MODES[@]}) % ${#VARIANTS[@]}))
+          VARIANT="${VARIANTS[$VAR_INDEX]}"
 
-          EFFORT="${EFFORT_OVERRIDE:-}"
-          if [ -z "$EFFORT" ]; then
-            EFFORT="high"
-          fi
-          if [ "$EFFORT" != "low" ] && [ "$EFFORT" != "medium" ] && [ "$EFFORT" != "high" ]; then
-            echo "Invalid effort: $EFFORT" >&2
-            exit 1
-          fi
+          EFFORT="high"
 
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
@@ -175,7 +86,6 @@ jobs:
         id: key
         shell: bash
         env:
-          MODEL_OVERRIDE: ${{ github.event.inputs.model }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_KEY_1: ${{ secrets.OPENAI_API_KEY_1 }}
           OPENAI_API_KEY_2: ${{ secrets.OPENAI_API_KEY_2 }}
@@ -187,13 +97,8 @@ jobs:
 
           DEFAULT_CODEX_MODEL="gpt-5.1-codex-max"
 
-          REQUESTED_MODEL="${MODEL_OVERRIDE:-}"
+          REQUESTED_MODEL="$DEFAULT_CODEX_MODEL"
           REQUIRE_REQUESTED="false"
-          if [ -n "$REQUESTED_MODEL" ]; then
-            REQUIRE_REQUESTED="true"
-          else
-            REQUESTED_MODEL="$DEFAULT_CODEX_MODEL"
-          fi
 
           # Prefer OPENAI_API_KEY, then numbered keys.
           KEYS=(
