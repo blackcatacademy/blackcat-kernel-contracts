@@ -86,6 +86,7 @@ jobs:
         id: key
         shell: bash
         env:
+          AI_AUDIT_MODEL: ${{ vars.AI_AUDIT_MODEL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_KEY_1: ${{ secrets.OPENAI_API_KEY_1 }}
           OPENAI_API_KEY_2: ${{ secrets.OPENAI_API_KEY_2 }}
@@ -97,7 +98,12 @@ jobs:
 
           DEFAULT_CODEX_MODEL="gpt-5.1-codex-max"
 
-          REQUESTED_MODEL="$DEFAULT_CODEX_MODEL"
+          REQUESTED_MODEL="${AI_AUDIT_MODEL:-}"
+          REQUESTED_MODEL="$(printf '%s' "$REQUESTED_MODEL" | tr -d '[:space:]')"
+          if [ -z "$REQUESTED_MODEL" ] || [ "$REQUESTED_MODEL" = "auto" ]; then
+            REQUESTED_MODEL=""
+          fi
+
           REQUIRE_REQUESTED="false"
 
           # Prefer OPENAI_API_KEY, then numbered keys.
@@ -126,15 +132,17 @@ jobs:
             fi
 
             MODEL="$(
-              python3 - "$REQUESTED_MODEL" "$REQUIRE_REQUESTED" "$MODELS_FILE" <<'PY'
+              python3 - "$REQUESTED_MODEL" "$DEFAULT_CODEX_MODEL" "$REQUIRE_REQUESTED" "$MODELS_FILE" <<'PY'
           import json
+          import re
           import sys
           
           requested = sys.argv[1]
-          require_requested = (sys.argv[2].lower() == "true")
+          default_model = sys.argv[2]
+          require_requested = (sys.argv[3].lower() == "true")
           
           try:
-              with open(sys.argv[3], "r", encoding="utf-8") as f:
+              with open(sys.argv[4], "r", encoding="utf-8") as f:
                   data = json.load(f)
           except Exception:
               print("")
@@ -147,6 +155,9 @@ jobs:
                   if isinstance(mid, str):
                       ids.append(mid)
           
+          if requested == "":
+              requested = default_model
+
           if require_requested and requested not in ids:
               print("")
               sys.exit(0)
@@ -154,11 +165,33 @@ jobs:
           if requested in ids:
               print(requested)
               sys.exit(0)
-          
+
+          # Prefer Codex models, selecting the newest available version.
+          codex = []
           for mid in ids:
-              if mid.startswith("gpt-"):
-                  print(mid)
-                  sys.exit(0)
+              if "codex" not in mid:
+                  continue
+
+              m = re.match(r"^gpt-(\\d+)(?:\\.(\\d+))?(?:\\.(\\d+))?-codex", mid)
+              if m:
+                  major = int(m.group(1) or "0")
+                  minor = int(m.group(2) or "0")
+                  patch = int(m.group(3) or "0")
+              else:
+                  major, minor, patch = 0, 0, 0
+              is_max = 1 if "-max" in mid else 0
+              codex.append(((major, minor, patch, is_max), mid))
+
+          if codex:
+              codex.sort(key=lambda it: it[0], reverse=True)
+              print(codex[0][1])
+              sys.exit(0)
+
+          # Fall back to any GPT model.
+          gpt = [mid for mid in ids if mid.startswith("gpt-")]
+          if gpt:
+              print(gpt[0])
+              sys.exit(0)
           
           if ids:
               print(ids[0])
